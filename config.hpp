@@ -2,6 +2,12 @@
 #define CONFIG_HPP
 
 
+class config
+{
+
+    public:
+    private:
+}
 
 
 
