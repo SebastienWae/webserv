@@ -1,0 +1,9 @@
+FormatStyle: Google
+Checks: >
+  abseil-*,
+  bugprone-*,
+  clang-analyzer-*,
+  performance-*,
+  readability-*,
+  -readability-identifier-length,
+WarningsAsErrors: "*"
