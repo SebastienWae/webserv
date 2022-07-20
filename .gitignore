@@ -30,3 +30,11 @@
 *.exe
 *.out
 *.app
+
+# Others
+compile_commands.json
+.cache/
+webserv
+webserv_debug
+out/
+debug/
