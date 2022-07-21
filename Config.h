@@ -3,29 +3,29 @@
 #include <__nullptr>
 #include <iostream>
 
-struct location {
-  std::string deny;
-  std::string access_log;
-  std::string log_not_found;
+// struct location {
+//   std::string deny;
+//   std::string access_log;
+//   std::string log_not_found;
 
-  location() : deny(nullptr), access_log(nullptr), log_not_found(nullptr) {}
-  ~location();
-};
+//   location() : deny(nullptr), access_log(nullptr), log_not_found(nullptr) {}
+//   ~location();
+// };
 
-struct data {
-  int port;
-  std::string server_names;
-  location urls;
-  location dotfiles;
-  std::string error_log;
-  std::string access_log;
-  std::string error_page;
+// struct data {
+//   int port;
+//   std::string server_names;
+//   location urls;
+//   location dotfiles;
+//   std::string error_log;
+//   std::string access_log;
+//   std::string error_page;
 
-  struct data* next;
+//   struct data* next;
 
-  data() : port(0), server_names(nullptr), next(nullptr) {}
-  ~data();
-};
+//   data() : port(0), server_names(nullptr), next(nullptr) {}
+//   ~data();
+// };
 
 class config {
 public:
@@ -37,7 +37,8 @@ public:
   void setconfig(const std::string& files);
 
 private:
-  struct data* dt;
+  int port;
+  std::string server_names;
 };
 
 #endif
