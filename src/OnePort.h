@@ -59,7 +59,7 @@ public:
   };
 
   void sendingMessageBackToClient(int index) const;
-  class ClientSendResponse : public ServerCoreNonFatalException {
+  class ClientSendResponseException : public ServerCoreNonFatalException {
   public:
     virtual char const* what() const throw();
   };

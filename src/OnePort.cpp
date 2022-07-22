@@ -132,11 +132,11 @@ void OnePort::sendingMessageBackToClient(int i) const {
 
   if (ret_recv == 0) {
     std::cerr << std::endl << "Error: Connection closed by client" << std::endl;
-    throw ClientSendResponse();
+    throw ClientSendResponseException();
     // TO DO : delete ?
   } else if (ret_recv < 0) {
     std::cerr << std::endl << "Error: No byte to read." << std::endl;
-    throw ClientSendResponse();
+    throw ClientSendResponseException();
     // TO DO : delete ?
   } else {
     std::cout << "Received from client : " << std ::endl << std::endl << buffer << std::endl;
