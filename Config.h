@@ -22,9 +22,10 @@ public:
   public:
     virtual const char* what() const throw();
   };
+  void servername(std::string const& str);
 
 private:
-  std::vector<server> server;
+  std::vector<server> Server;
   std::list<std::string> keyword;
 };
 
