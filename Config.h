@@ -1,32 +1,14 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 #include <__nullptr>
+#include <exception>
+#include <fstream>
 #include <iostream>
+#include <sstream>
+#include <string>
+#include <vector>
 
-// struct location {
-//   std::string deny;
-//   std::string access_log;
-//   std::string log_not_found;
-
-//   location() : deny(nullptr), access_log(nullptr), log_not_found(nullptr) {}
-//   ~location();
-// };
-
-// struct data {
-//   int port;
-//   std::string server_names;
-//   location urls;
-//   location dotfiles;
-//   std::string error_log;
-//   std::string access_log;
-//   std::string error_page;
-
-//   struct data* next;
-
-//   data() : port(0), server_names(nullptr), next(nullptr) {}
-//   ~data();
-// };
-
+#include "Server.h"
 class config {
 public:
   config();
@@ -35,10 +17,15 @@ public:
   ~config();
   void checkconfig(const std::string& files);
   void setconfig(const std::string& files);
+  void checkbracket(std::string);
+  class FilesException : public std::exception {
+  public:
+    virtual const char* what() const throw();
+  };
 
 private:
-  int port;
-  std::string server_names;
+  std::vector<server> server;
+  std::list<std::string> keyword;
 };
 
 #endif
