@@ -1,4 +1,7 @@
 
 #include "Config.h"
 
-int main() {}
+int main() {
+  config test;
+  test.checkconfig("test");
+}
