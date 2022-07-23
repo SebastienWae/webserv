@@ -8,7 +8,7 @@
 
 config::config() {
   ser[0] = "server";
-  ser[1] = "port";
+  ser[1] = "listen";
   ser[2] = "server_name";
   ser[3] = "error_page";
   ser[4] = "client_max_body_size";
@@ -20,14 +20,18 @@ config::config() {
   Loca[5] = "cgi_pass";
   Loca[6] = "return";
 }
+
 config& config::operator=(config const& rhs) {
   if (this != &rhs) {
     this->Server = rhs.Server;
   }
   return (*this);
 }
+
 config::config(config const& src) { *this = src; }
+
 config::~config() {}
+
 void config::checkconfig(const std::string& files) {
   (void)files;
   bool flag = false;
@@ -37,6 +41,7 @@ void config::checkconfig(const std::string& files) {
   int count = 0;
   size_t start;
   size_t end;
+  std::string tmp;
   inputFile.open("nginx.conf");
   if (inputFile.fail()) {
     throw config::FilesException();
@@ -63,7 +68,8 @@ void config::checkconfig(const std::string& files) {
           flag = true;
         }
       }
-      setserver(str.substr(start, end - start));
+      tmp = str.substr(start, end - start);
+      setserver(tmp);
     }
   }
 }
@@ -74,28 +80,49 @@ void config::setserver(std::string const& str) {
   server* sev = new server;
   size_t start = 0;
   size_t end = 0;
-  void (server::*setserver[4])(const std::string& tmp)
+  void (server::*server_fns_array[4])(const std::string& tmp)
       = {&server::setport, &server::setserver_names, &server::seterror_page,
          &server::setclient_max_body_size};
-  void (Location::*setLocation[6])(const std::string& tmp)
-      = {&Location::setname,         &Location::setallow,    &Location::setautoindex,
-         &Location::setupload_store, &Location::setcgi_pass, &Location::setredirection};
   this->Server.push_back(*sev);
   for (size_t i = 0; i < str.size(); i++) {
     if (str.compare(i, strlen("location"), "location") == 0) {
       tmp = str.substr(0, i);
       for (size_t j = 1; j < 5; j++) {
-        tmp.find(this->ser[j], found);
-        if (tmp[found - 1] == '\n' && tmp[found + this->ser[j].size() + 1] == ' ') {
-          start = found;
-          for (size_t k = found; tmp[k] != '\n'; k++) {
-            end = k;
-          }
-          (server::setserver[j])(tmp.substr(start, end - start));
+        start = tmp.find(this->ser[j], found);
+        for (size_t k = start; tmp[k] != ';'; k++) {
+          end = k;
+        }
+        end++;
+        (sev->*server_fns_array[j])(tmp.substr(start, end - start));
+      }
+    }
+  }
+  seeklocation(str.substr(end - start, str.size()));
+}
+
+void config::seeklocation(std::string const& str) {
+  size_t found = 0;
+  std::string tmp;
+  size_t start = 0;
+  size_t end = 0;
+
+  for (size_t i = 0; i < str.size(); i++) {
+    if (str.compare(i, strlen("location"), "location") == 0) {
+      start = i;
+      for (size_t j = 0; j < str.size(); j++) {
+        if (str.compare(j, strlen("}"), "}") == 0) {
+          end = j;
+          setlocation(str.substr(start, end - start));
         }
       }
     }
   }
+}
+
+void config::setlocation(std::string const& str) {
+  void (Location::*setLoc[6])(const std::string& tmp)
+      = {&Location::setname,         &Location::setallow,    &Location::setautoindex,
+         &Location::setupload_store, &Location::setcgi_pass, &Location::setredirection};
 }
 
 const char* config::FilesException::what(void) const throw() {

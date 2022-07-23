@@ -22,6 +22,6 @@ private:
   std::string server_names;
   std::string error_page;
   std::string client_max_body_size;
-  std::list<Location> location;
+  std::vector<Location> location;
 };
 #endif
