@@ -1,6 +1,7 @@
 #include "Server.h"
 
-server::server() : port(0), server_names("default"), error_page("default"){};
+server::server()
+    : server_names("default"), error_page("default"), client_max_body_size("default"){};
 server &server::operator=(server const &rhs) {
   if (this != &rhs) {
     this->server_names = rhs.server_names;
