@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "Server.h"
+#define variable 7
 class config {
 public:
   config();
@@ -29,7 +30,7 @@ public:
 private:
   std::vector<server> Server;
   std::string ser[5];
-  std::string Loca[7];
+  std::string Loca[variable];
 };
 
 #endif
