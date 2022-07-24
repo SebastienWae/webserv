@@ -1,8 +1,5 @@
-#include <pthread.h>
-//#include <sys/_pthread/_pthread_t.h>
-#include <list>
-
 #include "OnePort.h"
+
 int main() {
   /* Multiple ports => threads */
   // std::list<std::string> ports;

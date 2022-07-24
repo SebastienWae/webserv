@@ -13,7 +13,8 @@ CXXFLAGS = -O0
 
 SRCS = main.cpp \
 		OnePort.cpp \
-		PollElement.cpp 
+		PollElement.cpp \
+		Client.cpp
 		
 SRCS_PATH = $(addprefix $(SRC_DIR)/,$(SRCS))
 SRCS_PATH_BONUS = $(addprefix $(SRC_DIR)/,$(SRCS_BONUS))

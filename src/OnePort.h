@@ -4,15 +4,13 @@
 #include <netdb.h>
 
 #include <exception>
-#include <iostream>
 #include <list>
 
 #include "PollElement.h"
 
 /*queue size of pending connections. if full => sends
 ECONNREFUSED or tries again to connect - depends on client */
-#define MAX_PENDING_CONNECTIONS 50   // TO SET
-#define BUFSIZE_CLIENT_REQUEST 1024  // TO SET => max size necessary for a request ?
+#define MAX_PENDING_CONNECTIONS 50  // TO SET
 
 class OnePort {
 public:
@@ -45,7 +43,7 @@ public:
 
   /* Poll functions */
   void pollProcessInit();
-  class PollException : public ServerCoreFatalException {
+  class PollException : public ServerCoreNonFatalException {
   public:
     virtual char const* what() const throw();
   };

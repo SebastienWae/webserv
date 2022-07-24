@@ -1,31 +1,21 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <poll.h>
 #include <pthread.h>
 //#include <sys/_pthread/_pthread_t.h>
-#include <string.h>
 #include <sys/fcntl.h>
 #include <sys/poll.h>
-#include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
 
 #include <algorithm>
-#include <exception>
-#include <iostream>
-#include <list>
 
 #include "OnePort.h"
-// NEXT THING TO DO : exception class
-// si chunk : => message qui demande si ok pour envoyer gros truc = > return 100
-// et continuer a lire (= ne pas fermer socket) jusque timeout ou jusque check
-// by seb = is complete a mettre dans un try catch
 
 OnePort ::OnePort(){};
 
-OnePort::~OnePort(){};
+OnePort::~OnePort(){
+
+};
 
 char const* OnePort::ServerCoreFatalException::what() const throw() {
   return "Server core fatal error.";
@@ -101,7 +91,7 @@ void OnePort::pollProcessInit() {
   poll_elem.poll_ret = poll(&poll_elem.clients_array[0].fd_info, poll_elem.active_fds, 5000);
   // 5000 :  timeout / pas de timeout => set a -1
   if (poll_elem.poll_ret == -1) {
-    std::cout << "Poll error." << std ::endl;
+    std::cout << "Poll error. Trying again to init..." << std ::endl;
     throw PollException();
   }
   if (poll_elem.poll_ret == 0) {  // pas d'event
@@ -140,33 +130,26 @@ void OnePort::getResponse(int i) const {
 }
 
 void OnePort::sendMessageBackToClient(int i) const {
-  char buffer[BUFSIZE_CLIENT_REQUEST];  // TO SET
-  long int ret_recv
-      = recv(poll_elem.clients_array[i].fd_info.fd, buffer, BUFSIZE_CLIENT_REQUEST, 0);
+  long int ret_recv = recv(poll_elem.clients_array[i].fd_info.fd,
+                           poll_elem.clients_array[i].request, BUFSIZE_CLIENT_REQUEST, 0);
 
   if (ret_recv == 0) {
     std::cerr << std::endl << "Error: Connection closed by client" << std::endl;
     throw ClientSendResponseException();
-    // TO DO : delete ?
-  } else if (ret_recv < 0) {
+  }
+  if (ret_recv < 0) {
     std::cerr << std::endl << "Error: No byte to read." << std::endl;
     throw ClientSendResponseException();
-    // TO DO : delete ?
-  } else {
-    std::cout << "Received from client : " << std ::endl << std::endl << buffer << std::endl;
-    getResponse(i);
-    send(poll_elem.clients_array[i].fd_info.fd, (poll_elem.clients_array[i].response).c_str(),
-         (poll_elem.clients_array[i].response).length(), 0);
-    std::cout << std::endl << "*** Message sent to client ***" << std::endl;
-
-    std::cout << std::endl
-              << "Active fds : " << poll_elem.active_fds << " - TO DO : CHECK THIS" << std::endl
-              << std::endl
-              << "---------------------------------------" << std::endl
-              << std::endl;
-    //  TO DO : verif what happens with fd_elem. fd counts increases
-    //  undefined behavior when close and awful crash when deleting
   }
+  std::cout << "Received from client : " << std ::endl
+            << std::endl
+            << poll_elem.clients_array[i].request << std::endl;
+  getResponse(i);
+  send(poll_elem.clients_array[i].fd_info.fd, (poll_elem.clients_array[i].response).c_str(),
+       (poll_elem.clients_array[i].response).length(), 0);
+  std::cout << std::endl << "*** Message sent to client ***" << std::endl;
+
+  std::cout << poll_elem.clients_array << std::endl;  // TO DO : check to delete appropriate fds
 }
 
 void* OnePort::launchOnOnePort() {
@@ -192,6 +175,8 @@ void* OnePort::launchOnOnePort() {
             }
           } catch (ServerCoreNonFatalException& e) {
             std::cerr << e.what() << std::endl;
+            std::cout << poll_elem.clients_array
+                      << std::endl;  // TO DO : check to delete appropriate fds
           }
         }
       }
@@ -199,7 +184,8 @@ void* OnePort::launchOnOnePort() {
     close(listener);
   } catch (ServerCoreFatalException& e) {
     std::cerr << e.what() << std::endl;
-    std::cerr << "*** Server stopped listening on port " << port << " ***" << std::endl;
+    std::cerr << "*** Server stopped listening on port " << port << " ***" << std::endl
+              << "Closing..." << std::endl;
     // TO DO : close / delete
   }
   return (0);
