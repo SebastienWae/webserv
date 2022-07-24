@@ -133,9 +133,11 @@ void config::seeklocation(std::string const& str, int* countserv) {
   }
   for (size_t j = 0; j < str.size(); j++) {
     if (str.compare(j, strlen("}"), "}") == 0) {
-      end = j;
-      setlocation(str.substr(start, end - start + 1), countserv);
-      start = end + 1;
+      if (str.find("location", start) != std::string::npos) {
+        end = j;
+        setlocation(str.substr(start, end - start + 1), countserv);
+        start = end + 1;
+      }
     }
   }
 }
@@ -163,7 +165,7 @@ void config::setlocation(std::string const& str, const int* countserv) {
     }
   }
 
-  for (size_t j = 2; j < 7; j++) {
+  for (size_t j = 2; j < variable; j++) {
     start = str.find(this->Loca[j], found);
     if (start != std::string::npos) {
       for (size_t k = start; str[k] != '\n'; k++) {
