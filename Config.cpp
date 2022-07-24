@@ -4,6 +4,7 @@
 
 #include <__nullptr>
 
+#include "Location.h"
 #include "Server.h"
 
 config::config() {
@@ -39,9 +40,10 @@ void config::checkconfig(const std::string& files) {
   std::string str;
   std::stringstream strings;
   int count = 0;
-  size_t start;
-  size_t end;
+  size_t start = 0;
+  size_t end = 0;
   std::string tmp;
+  int countserv = -1;
   inputFile.open("nginx.conf");
   if (inputFile.fail()) {
     throw config::FilesException();
@@ -51,7 +53,7 @@ void config::checkconfig(const std::string& files) {
   for (size_t i = 0; i < str.size(); i++) {
     if (str.compare(i, strlen("server"), "server") == 0) {
       for (size_t j = i; str.compare(j, 1, "{") != 0; j++) {
-        end = j + i;
+        end = j;
       }
       start = end + 1;
       count++;
@@ -69,60 +71,89 @@ void config::checkconfig(const std::string& files) {
         }
       }
       tmp = str.substr(start, end - start);
-      setserver(tmp);
+      setserver(tmp, &countserv);
+      i = end;
     }
   }
 }
 
-void config::setserver(std::string const& str) {
+void config::setserver(std::string const& str, int* countserv) {
   size_t found = 0;
   std::string tmp;
-  server* sev = new server;
   size_t start = 0;
   size_t end = 0;
+
   void (server::*server_fns_array[4])(const std::string& tmp)
       = {&server::setport, &server::setserver_names, &server::seterror_page,
          &server::setclient_max_body_size};
-  this->Server.push_back(*sev);
+  start = str.find("server_name", found);
+  if (start == std::string::npos) {
+    *countserv = 0;
+  } else {
+    server* sev = new server;
+    this->Server.push_back(*sev);
+    *countserv = *countserv + 1;
+  }
+
   for (size_t i = 0; i < str.size(); i++) {
     if (str.compare(i, strlen("location"), "location") == 0) {
       tmp = str.substr(0, i);
-      for (size_t j = 1; j < 5; j++) {
-        start = tmp.find(this->ser[j], found);
-        for (size_t k = start; tmp[k] != ';'; k++) {
-          end = k;
-        }
-        end++;
-        (sev->*server_fns_array[j])(tmp.substr(start, end - start));
-      }
     }
   }
-  seeklocation(str.substr(end - start, str.size()));
+  for (size_t j = 1; j < 5; j++) {
+    start = tmp.find(this->ser[j], found);
+    if (start != std::string::npos) {
+      for (size_t k = start; tmp[k] != ';'; k++) {
+        end = k;
+      }
+      end++;
+      (this->Server[*countserv].*server_fns_array[j - 1])(tmp.substr(start, end - start));
+    }
+  }
+
+  seeklocation(str.substr(end - start, str.size()), countserv);
 }
 
-void config::seeklocation(std::string const& str) {
-  size_t found = 0;
+void config::seeklocation(std::string const& str, int* countserv) {
   std::string tmp;
   size_t start = 0;
   size_t end = 0;
+  bool flag = true;
 
-  for (size_t i = 0; i < str.size(); i++) {
+  for (size_t i = 0; i < str.size() && flag; i++) {
     if (str.compare(i, strlen("location"), "location") == 0) {
       start = i;
-      for (size_t j = 0; j < str.size(); j++) {
-        if (str.compare(j, strlen("}"), "}") == 0) {
-          end = j;
-          setlocation(str.substr(start, end - start));
-        }
-      }
+      flag = false;
+    }
+  }
+  for (size_t j = 0; j < str.size(); j++) {
+    if (str.compare(j, strlen("}"), "}") == 0) {
+      end = j;
+      setlocation(str.substr(start, end - start + 1), countserv);
+      start = end + 1;
     }
   }
 }
 
-void config::setlocation(std::string const& str) {
+void config::setlocation(std::string const& str, int* countserv) {
+  Location* loc = new Location;
+  size_t start = 0;
+  size_t end = 0;
+  size_t found = 0;
+
   void (Location::*setLoc[6])(const std::string& tmp)
       = {&Location::setname,         &Location::setallow,    &Location::setautoindex,
          &Location::setupload_store, &Location::setcgi_pass, &Location::setredirection};
+  for (size_t j = 2; j < 7; j++) {
+    start = str.find(this->Loca[j], found);
+    if (start != std::string::npos) {
+      for (size_t k = start; str[k] != '\n'; k++) {
+        end = k;
+      }
+      (loc->*setLoc[j - 1])(str.substr(start, end - start + 1));
+    }
+  }
+  this->Server[*countserv].setlocation(*loc);
 }
 
 const char* config::FilesException::what(void) const throw() {

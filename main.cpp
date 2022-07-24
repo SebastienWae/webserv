@@ -4,4 +4,5 @@
 int main() {
   config test;
   test.checkconfig("test");
+  return (0);
 }
