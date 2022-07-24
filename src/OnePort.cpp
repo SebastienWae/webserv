@@ -129,7 +129,17 @@ void OnePort::getClientRequest(int i) {
             << std::endl;
 }
 
-void OnePort::sendingMessageBackToClient(int i) const {
+void OnePort::getResponse(int i) const {
+  std::string hello
+      = "HTTP/1.1 200 OK\nContent-Type : "
+        "text/plain\nContent-Length "
+        ": 12\n\nHello world !";
+  poll_elem.clients_array[i].response = hello;
+  // add here call reponse
+  // TO DO : chunk => while (chunked) response += piece_of_message
+}
+
+void OnePort::sendMessageBackToClient(int i) const {
   char buffer[BUFSIZE_CLIENT_REQUEST];  // TO SET
   long int ret_recv
       = recv(poll_elem.clients_array[i].fd_info.fd, buffer, BUFSIZE_CLIENT_REQUEST, 0);
@@ -144,12 +154,9 @@ void OnePort::sendingMessageBackToClient(int i) const {
     // TO DO : delete ?
   } else {
     std::cout << "Received from client : " << std ::endl << std::endl << buffer << std::endl;
-    // PUT HERE FUNCTION TO GET THE MESSAGE TO SEND BACK
-    std::string hello
-        = "HTTP/1.1 200 OK\nContent-Type : "
-          "text/plain\nContent-Length "
-          ": 12\n\nHello world !";
-    send(poll_elem.clients_array[i].fd_info.fd, hello.c_str(), hello.length(), 0);
+    getResponse(i);
+    send(poll_elem.clients_array[i].fd_info.fd, (poll_elem.clients_array[i].response).c_str(),
+         (poll_elem.clients_array[i].response).length(), 0);
     std::cout << std::endl << "*** Message sent to client ***" << std::endl;
 
     std::cout << std::endl
@@ -180,7 +187,7 @@ void* OnePort::launchOnOnePort() {
             if (poll_elem.clients_array[i].fd_info.fd == listener) {
               getClientRequest(i);
             } else {
-              sendingMessageBackToClient(i);
+              sendMessageBackToClient(i);
               close(poll_elem.clients_array[i].new_socket);
             }
           } catch (ServerCoreNonFatalException& e) {

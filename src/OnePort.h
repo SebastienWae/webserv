@@ -12,7 +12,7 @@
 /*queue size of pending connections. if full => sends
 ECONNREFUSED or tries again to connect - depends on client */
 #define MAX_PENDING_CONNECTIONS 50   // TO SET
-#define BUFSIZE_CLIENT_REQUEST 1024  // TO SET
+#define BUFSIZE_CLIENT_REQUEST 1024  // TO SET => max size necessary for a request ?
 
 class OnePort {
 public:
@@ -57,8 +57,8 @@ public:
   public:
     virtual char const* what() const throw();
   };
-
-  void sendingMessageBackToClient(int index) const;
+  void getResponse(int i) const;
+  void sendMessageBackToClient(int index) const;
   class ClientSendResponseException : public ServerCoreNonFatalException {
   public:
     virtual char const* what() const throw();
@@ -76,12 +76,6 @@ private:
   struct addrinfo hints;
   struct addrinfo* address_info;
   struct addrinfo* p;
-
-  /* Client request variables */
-  // int new_socket;
-  // sockaddr_storage client_address;
-  // socklen_t address_len;
-  // char remoteIP[INET6_ADDRSTRLEN];
 };
 
 #endif
