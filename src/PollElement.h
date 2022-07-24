@@ -1,16 +1,35 @@
 #ifndef POLL_ELEMENT_H
 #define POLL_ELEMENT_H
 
+#include <netinet/in.h>
+#include <poll.h>
+#include <sys/socket.h>
+
+#include <iostream>
+
 #define POLL_INIT_NUMBER 5
 
-#include <poll.h>
+class Client {
+public:
+  Client();
+  ~Client();
+
+  struct pollfd fd_info;
+
+  int new_socket;
+  sockaddr_storage client_address;
+  socklen_t address_len;
+  char remoteIP[INET6_ADDRSTRLEN];
+
+  std::string response;
+};
 
 class PollElement {
- public:
+public:
   PollElement();
   ~PollElement();
 
-  struct pollfd* poll_fds;
+  Client* clients_array;
 
   int poll_fd_size;  // max size in the array - TO DO : check if overflows
   int active_fds;    // nb of fd currently used

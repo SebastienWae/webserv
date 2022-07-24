@@ -36,7 +36,7 @@ char const* OnePort::PollException::what() const throw() { return "Poll error.";
 char const* OnePort::ClientGetRequestException::what() const throw() {
   return "Error while getting client request.";
 }
-char const* OnePort::ClientSendResponse::what() const throw() {
+char const* OnePort::ClientSendResponseException::what() const throw() {
   return "Error while sending response to client.";
 }
 
@@ -98,7 +98,7 @@ void OnePort::createListenerSocket() {
 };
 
 void OnePort::pollProcessInit() {
-  poll_elem.poll_ret = poll(&poll_elem.poll_fds[0], poll_elem.active_fds, 5000);
+  poll_elem.poll_ret = poll(&poll_elem.clients_array[0].fd_info, poll_elem.active_fds, 5000);
   // 5000 :  timeout / pas de timeout => set a -1
   if (poll_elem.poll_ret == -1) {
     std::cout << "Poll error." << std ::endl;
@@ -110,25 +110,29 @@ void OnePort::pollProcessInit() {
 }
 
 /* Called when data is ready to be received */
-void OnePort::getClientRequest() {
-  address_len = sizeof(client_address);
-  if ((new_socket = accept(listener, (struct sockaddr*)&client_address, (socklen_t*)&address_len))
+void OnePort::getClientRequest(int i) {
+  poll_elem.clients_array[i].address_len = sizeof(poll_elem.clients_array[i].client_address);
+  if ((poll_elem.clients_array[i].new_socket
+       = accept(listener, (struct sockaddr*)&(poll_elem.clients_array[i].client_address),
+                (socklen_t*)&(poll_elem.clients_array[i].address_len)))
       < 0) {
     std::cerr << "Accept error." << std ::endl;
     throw ClientGetRequestException();
   }
-  poll_elem = poll_elem.addToPollfds(new_socket);
+  poll_elem = poll_elem.addToPollfds(poll_elem.clients_array[i].new_socket);
   std::cout << std::endl
             << "*** New connection from "
-            << inet_ntop(client_address.ss_family, getAddress((struct sockaddr*)&client_address),
-                         remoteIP, INET6_ADDRSTRLEN)
+            << inet_ntop(poll_elem.clients_array[i].client_address.ss_family,
+                         getAddress((struct sockaddr*)&(poll_elem.clients_array[i].client_address)),
+                         poll_elem.clients_array[i].remoteIP, INET6_ADDRSTRLEN)
             << " ***" << std::endl
             << std::endl;
 }
 
 void OnePort::sendingMessageBackToClient(int i) const {
   char buffer[BUFSIZE_CLIENT_REQUEST];  // TO SET
-  long int ret_recv = recv(poll_elem.poll_fds[i].fd, buffer, BUFSIZE_CLIENT_REQUEST, 0);
+  long int ret_recv
+      = recv(poll_elem.clients_array[i].fd_info.fd, buffer, BUFSIZE_CLIENT_REQUEST, 0);
 
   if (ret_recv == 0) {
     std::cerr << std::endl << "Error: Connection closed by client" << std::endl;
@@ -145,7 +149,7 @@ void OnePort::sendingMessageBackToClient(int i) const {
         = "HTTP/1.1 200 OK\nContent-Type : "
           "text/plain\nContent-Length "
           ": 12\n\nHello world !";
-    send(poll_elem.poll_fds[i].fd, hello.c_str(), hello.length(), 0);
+    send(poll_elem.clients_array[i].fd_info.fd, hello.c_str(), hello.length(), 0);
     std::cout << std::endl << "*** Message sent to client ***" << std::endl;
 
     std::cout << std::endl
@@ -171,13 +175,13 @@ void* OnePort::launchOnOnePort() {
     while (true) {
       pollProcessInit();
       for (int i = 0; i < poll_elem.active_fds; i++) {
-        if ((poll_elem.poll_fds[i].revents & POLLIN) != 0) {
+        if ((poll_elem.clients_array[i].fd_info.revents & POLLIN) != 0) {
           try {
-            if (poll_elem.poll_fds[i].fd == listener) {
-              getClientRequest();
+            if (poll_elem.clients_array[i].fd_info.fd == listener) {
+              getClientRequest(i);
             } else {
               sendingMessageBackToClient(i);
-              close(new_socket);
+              close(poll_elem.clients_array[i].new_socket);
             }
           } catch (ServerCoreNonFatalException& e) {
             std::cerr << e.what() << std::endl;

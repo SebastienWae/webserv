@@ -52,7 +52,7 @@ public:
 
   /* Client functions */
   static void* getAddress(struct sockaddr* sockaddress);
-  void getClientRequest();
+  void getClientRequest(int i);
   class ClientGetRequestException : public ServerCoreNonFatalException {
   public:
     virtual char const* what() const throw();
@@ -78,10 +78,10 @@ private:
   struct addrinfo* p;
 
   /* Client request variables */
-  int new_socket;
-  sockaddr_storage client_address;
-  socklen_t address_len;
-  char remoteIP[INET6_ADDRSTRLEN];
+  // int new_socket;
+  // sockaddr_storage client_address;
+  // socklen_t address_len;
+  // char remoteIP[INET6_ADDRSTRLEN];
 };
 
 #endif
