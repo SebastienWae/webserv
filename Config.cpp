@@ -83,7 +83,7 @@ void config::setserver(std::string const& str, int* countserv) {
   size_t start = 0;
   size_t end = 0;
 
-  void (server::*server_fns_array[4])(const std::string& tmp)
+  void (server::*setserv[4])(const std::string& tmp)
       = {&server::setport, &server::setserver_names, &server::seterror_page,
          &server::setclient_max_body_size};
   start = str.find("server_name", found);
@@ -94,12 +94,16 @@ void config::setserver(std::string const& str, int* countserv) {
     this->Server.push_back(*sev);
     *countserv = *countserv + 1;
   }
-
-  for (size_t i = 0; i < str.size(); i++) {
-    if (str.compare(i, strlen("location"), "location") == 0) {
-      tmp = str.substr(0, i);
+  if (str.find("location", 0) != std::string::npos) {
+    for (size_t i = 0; i < str.size(); i++) {
+      if (str.compare(i, strlen("location"), "location") == 0) {
+        tmp = str.substr(0, i);
+      }
     }
+  } else {
+    tmp = str;
   }
+
   for (size_t j = 1; j < 5; j++) {
     start = tmp.find(this->ser[j], found);
     if (start != std::string::npos) {
@@ -107,11 +111,12 @@ void config::setserver(std::string const& str, int* countserv) {
         end = k;
       }
       end++;
-      (this->Server[*countserv].*server_fns_array[j - 1])(tmp.substr(start, end - start));
+      (this->Server[*countserv].*setserv[j - 1])(tmp.substr(start, end - start));
     }
   }
-
-  seeklocation(str.substr(end - start, str.size()), countserv);
+  if (str.find("location", 0) != std::string::npos) {
+    seeklocation(str.substr(end - start, str.size()), countserv);
+  }
 }
 
 void config::seeklocation(std::string const& str, int* countserv) {
@@ -135,15 +140,29 @@ void config::seeklocation(std::string const& str, int* countserv) {
   }
 }
 
-void config::setlocation(std::string const& str, int* countserv) {
+void config::setlocation(std::string const& str, const int* countserv) {
   Location* loc = new Location;
   size_t start = 0;
   size_t end = 0;
   size_t found = 0;
+  bool flag = false;
 
   void (Location::*setLoc[6])(const std::string& tmp)
       = {&Location::setname,         &Location::setallow,    &Location::setautoindex,
          &Location::setupload_store, &Location::setcgi_pass, &Location::setredirection};
+  for (size_t i = 0; i < str.size() && !flag; i++) {
+    if (str.compare(i, strlen("location"), "location") == 0) {
+      start = i;
+      for (size_t j = i; j < str.size() && !flag; j++) {
+        if (str.compare(j, 1, "\n") == 0) {
+          end = j;
+          (loc->*setLoc[0])(str.substr(start, end - start));
+          flag = true;
+        }
+      }
+    }
+  }
+
   for (size_t j = 2; j < 7; j++) {
     start = str.find(this->Loca[j], found);
     if (start != std::string::npos) {

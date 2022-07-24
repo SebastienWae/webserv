@@ -24,7 +24,7 @@ public:
   };
   void setserver(std::string const& str, int* countserv);
   void seeklocation(std::string const& str, int* countserv);
-  void setlocation(std::string const& str, int* countserv);
+  void setlocation(std::string const& str, const int* countserv);
 
 private:
   std::vector<server> Server;

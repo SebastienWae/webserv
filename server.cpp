@@ -4,6 +4,7 @@ server::server()
     : server_names("default"), error_page("default"), client_max_body_size("default"){};
 server &server::operator=(server const &rhs) {
   if (this != &rhs) {
+    this->port = rhs.port;
     this->server_names = rhs.server_names;
     this->error_page = rhs.error_page;
     this->client_max_body_size = rhs.client_max_body_size;
