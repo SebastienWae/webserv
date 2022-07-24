@@ -22,9 +22,9 @@ public:
   public:
     virtual const char* what() const throw();
   };
-  void setserver(std::string const& str);
-  void seeklocation(std::string const& str);
-  void setlocation(std::string const& str);
+  void setserver(std::string const& str, int* countserv);
+  void seeklocation(std::string const& str, int* countserv);
+  void setlocation(std::string const& str, int* countserv);
 
 private:
   std::vector<server> Server;

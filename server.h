@@ -15,7 +15,7 @@ public:
   void setserver_names(const std::string &tmp);
   void seterror_page(const std::string &tmp);
   void setclient_max_body_size(const std::string &tmp);
-  // void setlocation(const std::string &tmp);
+  void setlocation(const Location &loc);
 
 private:
   std::vector<std::string> port;
