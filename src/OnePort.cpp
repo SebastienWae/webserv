@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <pthread.h>
 //#include <sys/_pthread/_pthread_t.h>
+#include <errno.h>
 #include <sys/fcntl.h>
 #include <sys/poll.h>
 #include <sys/types.h>
@@ -46,28 +47,32 @@ void OnePort::startListening() const {
   }
   /* Sets to non blocking mode */
   if (fcntl(listener, F_SETFL, O_NONBLOCK) == -1) {
-    std::cout << "Cannot set fd to non blocking." << std ::endl;
+    std::cerr << "Cannot set fd to non blocking." << std ::endl;
     throw ListenerException();
   }
 }
 
 void OnePort::createListenerSocket() {
-  int y = 1;
+  /*********************************************/
 
-  // memset((char*)&hints, 0, sizeof(hints));
+  // 2. bind a socket
+
+  /********************************************/
+  int y = 1;
   memset((char*)&hints, 0, sizeof(hints));
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE;
 
   if (getaddrinfo(NULL, (this->port).c_str(), &hints, &address_info) != 0) {
-    std::cout << "Getaddrinfo error." << std ::endl;
+    std::cerr << "Getaddrinfo error." << std ::endl;
     throw ListenerException();
   }
 
   /* 1. get listener socket */
   for (p = address_info; p != NULL; p = p->ai_next) {
-    listener = socket(p->ai_family, p->ai_socktype, p->ai_flags);
+    listener = socket(p->ai_family, p->ai_socktype, p->ai_flags);  // this one does not work on
+
     if (listener < 0) {
       continue;
     }
@@ -82,7 +87,9 @@ void OnePort::createListenerSocket() {
   }
   freeaddrinfo(address_info);
   if (p == NULL) {
-    std::cout << "Bind failed." << std ::endl;
+    std::cerr << "Bind failed." << std ::endl;
+    std::cerr << "error num " << errno << std::endl;  // TO DO : remove when ok on linux
+    std::cerr << strerror(errno) << std::endl;
     throw ListenerException();
   }
 };
@@ -91,7 +98,7 @@ void OnePort::pollProcessInit() {
   poll_elem.poll_ret = poll(&poll_elem.clients_array[0].fd_info, poll_elem.active_fds, 5000);
   // 5000 :  timeout / pas de timeout => set a -1
   if (poll_elem.poll_ret == -1) {
-    std::cout << "Poll error. Trying again to init..." << std ::endl;
+    std::cerr << "Poll error. Trying again to init..." << std ::endl;
     throw PollException();
   }
   if (poll_elem.poll_ret == 0) {  // pas d'event
