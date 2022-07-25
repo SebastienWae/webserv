@@ -28,6 +28,14 @@ PollElement PollElement::addToPollfds(int new_socket) {
   return (*this);
 }
 
+PollElement PollElement::removeFromPollfds(int i)  {
+  poll_fds[i].fd = -1;
+  poll_fds[i].events = 0;
+  poll_fds[i].revents = 0;
+  active_fds --;
+ return (*this);
+}
+
 void PollElement::initPollElement(int listener) {
   poll_fd_size = POLL_INIT_NUMBER;
   poll_fds = new struct pollfd[POLL_INIT_NUMBER];

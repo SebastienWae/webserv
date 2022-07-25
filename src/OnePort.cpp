@@ -116,16 +116,19 @@ std::string OnePort::getResponse() const {  // TO DO : put the right thing
   return hello;
 }
 
-void OnePort::sendingMessageBackToClient(int i) const {
+
+void OnePort::sendingMessageBackToClient(int i) {
   char buffer[BUFSIZE_CLIENT_REQUEST];  // TO SET
   long int ret_recv = recv(poll_elem.poll_fds[i].fd, buffer, BUFSIZE_CLIENT_REQUEST, 0);
 
   if (ret_recv == 0) {
     std::cerr << std::endl << "Error: Connection closed by client" << std::endl;
+    poll_elem = poll_elem.removeFromPollfds(i);
     throw ClientSendResponseException();
   }
   if (ret_recv < 0) {
     std::cerr << std::endl << "Error: No byte to read" << std::endl;
+    poll_elem = poll_elem.removeFromPollfds(i);
     throw ClientSendResponseException();
   }
   std::cout << "Received from client : " << std ::endl << std::endl << buffer << std::endl;

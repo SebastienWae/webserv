@@ -53,7 +53,7 @@ public:
     virtual char const* what() const throw();
   };
   std::string getResponse() const;
-  void sendingMessageBackToClient(int index) const;
+  void sendingMessageBackToClient(int index) ;
   class ClientSendResponseException : public ServerCoreNonFatalException {
   public:
     virtual char const* what() const throw();
