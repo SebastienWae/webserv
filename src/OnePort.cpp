@@ -1,6 +1,7 @@
+#include "OnePort.h"
+
 #include <arpa/inet.h>
 #include <fcntl.h>
-#include <netdb.h>
 #include <netinet/in.h>
 #include <poll.h>
 #include <pthread.h>
@@ -10,12 +11,10 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+
 #include <algorithm>
 #include <exception>
-#include <iostream>
-#include <list>
 
-#include "OnePort.h"
 // NEXT THING TO DO : exception class
 // si chunk : => message qui demande si ok pour envoyer gros truc = > return 100
 // et continuer a lire (= ne pas fermer socket) jusque timeout ou jusque check
@@ -24,6 +23,18 @@
 OnePort ::OnePort(){};
 
 OnePort::~OnePort(){};
+char const* OnePort::ServerCoreFatalException::what() const throw() {
+  return "Server core fatal error.";
+}
+char const* OnePort::ServerCoreNonFatalException::what() const throw() { return "Server error."; }
+char const* OnePort::ListenerException::what() const throw() { return "Listener error."; }
+char const* OnePort::PollException::what() const throw() { return "Poll error."; }
+char const* OnePort::ClientGetRequestException::what() const throw() {
+  return "Error while getting client request.";
+}
+char const* OnePort::ClientSendResponseException::what() const throw() {
+  return "Error while sending response to client.";
+}
 
 void* OnePort::getAddress(struct sockaddr* sockaddress) {
   if (sockaddress->sa_family == AF_INET)  // IPV4
@@ -37,12 +48,12 @@ void* OnePort::getAddress(struct sockaddr* sockaddress) {
 void OnePort::startListening() const {
   if (listen(listener, MAX_PENDING_CONNECTIONS) < 0) {
     std::cerr << "Listen failed" << std ::endl;
-    throw std::exception();
+    throw ListenerException();
   }
   /* Sets to non blocking mode */
   if (fcntl(listener, F_SETFL, O_NONBLOCK) == -1) {
-    std::cout << "Cannot set fd to non blocking." << std ::endl;
-    throw std::exception();
+    std::cerr << "Cannot set fd to non blocking." << std ::endl;
+    throw ListenerException();
   }
 }
 
@@ -54,8 +65,8 @@ void OnePort::createListenerSocket() {
   hints.ai_flags = AI_PASSIVE;
 
   if (getaddrinfo(NULL, (this->port).c_str(), &hints, &address_info) != 0) {
-    std::cout << "Getaddrinfo error." << std ::endl;
-    throw std::exception();
+    std::cerr << "Getaddrinfo error." << std ::endl;
+    throw ListenerException();
   }
 
   /* 1. get listener socket */
@@ -75,8 +86,8 @@ void OnePort::createListenerSocket() {
   }
   freeaddrinfo(address_info);
   if (p == NULL) {
-    std::cout << "Bind failed" << std ::endl;
-    throw std::exception();
+    std::cerr << "Bind failed" << std ::endl;
+    throw ListenerException();
   }
 };
 
@@ -84,8 +95,8 @@ void OnePort::pollProcessInit() {
   poll_elem.poll_ret = poll(&poll_elem.poll_fds[0], poll_elem.active_fds, 5000);
   // 5000 :  timeout / pas de timeout => set a -1
   if (poll_elem.poll_ret == -1) {
-    std::cout << "Poll error." << std ::endl;
-    throw std::exception();
+    std::cerr << "Poll error." << std ::endl;
+    throw PollException();
   }
   if (poll_elem.poll_ret == 0) {  // pas d'event
     std::cout << "Poll timed out" << std ::endl;
@@ -95,53 +106,48 @@ void OnePort::pollProcessInit() {
 /* Called when data is ready to be received */
 void OnePort::getClientRequest() {
   address_len = sizeof(client_address);
-  if ((new_socket = accept(listener, (struct sockaddr*)&client_address,
-                           (socklen_t*)&address_len)) < 0) {
+  if ((new_socket = accept(listener, (struct sockaddr*)&client_address, (socklen_t*)&address_len))
+      < 0) {
     std::cerr << "Accept error" << std ::endl;
-  } else {
-    poll_elem = poll_elem.addToPollfds(new_socket);
-    std::cout << std::endl
-              << "*** New connection from "
-              << inet_ntop(client_address.ss_family,
-                           getAddress((struct sockaddr*)&client_address),
-                           remoteIP, INET6_ADDRSTRLEN)
-              << " ***" << std::endl
-              << std::endl;
+    throw ClientGetRequestException();
   }
+  poll_elem = poll_elem.addToPollfds(new_socket);
+  std::cout << std::endl
+            << "*** New connection from "
+            << inet_ntop(client_address.ss_family, getAddress((struct sockaddr*)&client_address),
+                         remoteIP, INET6_ADDRSTRLEN)
+            << " ***" << std::endl
+            << std::endl;
+}
+
+std::string OnePort::getResponse() const {  // TO DO : put the right thing
+  std::string hello
+      = "HTTP/1.1 200 OK\nContent-Type : "
+        "text/plain\nContent-Length "
+        ": 12\n\nHello world !";
+  return hello;
 }
 
 void OnePort::sendingMessageBackToClient(int i) const {
   char buffer[BUFSIZE_CLIENT_REQUEST];  // TO SET
-  long int ret_recv =
-      recv(poll_elem.poll_fds[i].fd, buffer, BUFSIZE_CLIENT_REQUEST, 0);
+  long int ret_recv = recv(poll_elem.poll_fds[i].fd, buffer, BUFSIZE_CLIENT_REQUEST, 0);
 
   if (ret_recv == 0) {
     std::cerr << std::endl << "Error: Connection closed by client" << std::endl;
-    // TO DO : delete ?
-  } else if (ret_recv < 0) {
-    std::cerr << std::endl << "Error: No byte to read" << std::endl;
-    // TO DO : delete ?
-  } else {
-    std::cout << "Received from client : " << std ::endl
-              << std::endl
-              << buffer << std::endl;
-    // PUT HERE FUNCTION TO GET THE MESSAGE TO SEND BACK
-    std::string hello =
-        "HTTP/1.1 200 OK\nContent-Type : "
-        "text/plain\nContent-Length "
-        ": 12\n\nHello world !";
-    send(poll_elem.poll_fds[i].fd, hello.c_str(), hello.length(), 0);
-    std::cout << std::endl << "*** Message sent to client ***" << std::endl;
-
-    std::cout << std::endl
-              << "Active fds : " << poll_elem.active_fds
-              << " - TO DO : CHECK THIS" << std::endl
-              << std::endl
-              << "---------------------------------------" << std::endl
-              << std::endl;
-    //  TO DO : verif what happens with fd_elem. fd counts increases
-    //  undefined behavior when close and awful crash when deleting
+    throw ClientSendResponseException();
   }
+  if (ret_recv < 0) {
+    std::cerr << std::endl << "Error: No byte to read" << std::endl;
+    throw ClientSendResponseException();
+  }
+  std::cout << "Received from client : " << std ::endl << std::endl << buffer << std::endl;
+
+  std::string response = getResponse();  // PUT HERE FUNCTION TO GET THE MESSAGE TO SEND BACK
+  send(poll_elem.poll_fds[i].fd, response.c_str(), response.length(), 0);
+  std::cout << std::endl << "*** Message sent to client ***" << std::endl;
+  // std::cout << poll_elem << std::endl;
+  //   TO DO : verif what happens with fd_elem. fd counts increases
+  //   undefined behavior when close and awful crash when deleting
 }
 
 void* OnePort::launchOnOnePort() {
@@ -151,14 +157,14 @@ void* OnePort::launchOnOnePort() {
     poll_elem.initPollElement(listener);
 
     std::cout << std::endl
-              << "-----------> READY TO START ON PORT " << port
-              << " <-----------" << std::endl
+              << "-----------> READY TO START ON PORT " << port << " <-----------" << std::endl
               << std::endl;
 
     while (true) {
       pollProcessInit();
       for (int i = 0; i < poll_elem.active_fds; i++) {
         if ((poll_elem.poll_fds[i].revents & POLLIN) != 0) {
+          // try {
           if (poll_elem.poll_fds[i].fd == listener) {
             getClientRequest();
           } else {
@@ -166,17 +172,18 @@ void* OnePort::launchOnOnePort() {
             close(new_socket);
           }
         }
+        // } catch (ServerCoreNonFatalException& e) {
+        //   std::cerr << e.what() << std::endl;
+        //   std::cout << poll_elem.clients_array
+        //             << std::endl;  // TO DO : check to delete appropriate fds
       }
     }
     close(listener);
   } catch (std::exception& e) {
-    std::cerr << "*** ERROR - OnePort STOPPED LISTENING ON PORT" << port
-              << std::endl;
+    std::cerr << "*** ERROR - OnePort STOPPED LISTENING ON PORT" << port << std::endl;
     // TO DO : close / delete
   }
   return (0);
 }
 
-void* OnePort::launchHelper(void* current) {
-  return ((OnePort*)current)->launchOnOnePort();
-};
+void* OnePort::launchHelper(void* current) { return ((OnePort*)current)->launchOnOnePort(); };

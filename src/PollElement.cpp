@@ -1,15 +1,20 @@
 #include "PollElement.h"
+
 #include <unistd.h>
 
-PollElement::PollElement(){};
+#include <iostream>
+
+PollElement::PollElement() {
+  poll_fd_size = 0;
+  active_fds = 0;
+};
 
 PollElement::~PollElement(){};
 
 PollElement PollElement::addToPollfds(int new_socket) {
   if (poll_fd_size == active_fds) {
     struct pollfd* new_pollfd = new struct pollfd[poll_fd_size * 2];
-    for (int i = 0; i < poll_fd_size; i++)
-      new_pollfd[i] = poll_fds[i];
+    for (int i = 0; i < poll_fd_size; i++) new_pollfd[i] = poll_fds[i];
     poll_fd_size *= 2;
     delete (this->poll_fds);
     poll_fds = new_pollfd;
@@ -28,7 +33,16 @@ void PollElement::initPollElement(int listener) {
   active_fds = 1;
 };
 
-// TO DO
-// void PollElement::deleteFromPollfds(int index) {
+std::ostream& operator<<(std::ostream& o, PollElement const& poll_elem) {
+  std::cout << "Max size : " << poll_elem.poll_fd_size << " Active fds : " << poll_elem.active_fds
+            << std::endl;
 
-// };
+  for (int i = 0; i < poll_elem.poll_fd_size; i++) {
+    std::cout << "----------" << std::endl;
+    std::cout << "Index " << i << ": " << std::endl;
+    std::cout << "Fd: " << poll_elem.poll_fds[i].fd << "Event: " << poll_elem.poll_fds[i].events
+              << "Event: " << poll_elem.poll_fds[i].revents << std::endl;
+  }
+  std::cout << "--------------------------------------------------------" << std::endl;
+  return o;
+}
