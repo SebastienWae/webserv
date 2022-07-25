@@ -3,11 +3,7 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <netinet/in.h>
-#include <poll.h>
-#include <pthread.h>
-#include <sys/_pthread/_pthread_t.h>
 #include <sys/fcntl.h>
-#include <sys/poll.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -15,14 +11,10 @@
 #include <algorithm>
 #include <exception>
 
-// NEXT THING TO DO : exception class
-// si chunk : => message qui demande si ok pour envoyer gros truc = > return 100
-// et continuer a lire (= ne pas fermer socket) jusque timeout ou jusque check
-// by seb = is complete a mettre dans un try catch
-
 OnePort ::OnePort(){};
 
-OnePort::~OnePort(){};
+OnePort::~OnePort() { delete[] poll_elem.poll_fds; };
+
 char const* OnePort::ServerCoreFatalException::what() const throw() {
   return "Server core fatal error.";
 }
@@ -37,10 +29,10 @@ char const* OnePort::ClientSendResponseException::what() const throw() {
 }
 
 void* OnePort::getAddress(struct sockaddr* sockaddress) {
-  if (sockaddress->sa_family == AF_INET)  // IPV4
+  if (sockaddress->sa_family == AF_INET) {
     return &(((struct sockaddr_in*)sockaddress)->sin_addr);
-
-  return &(((struct sockaddr_in6*)sockaddress)->sin6_addr);  // IPV6
+  }
+  return &(((struct sockaddr_in6*)sockaddress)->sin6_addr);
 }
 
 // If try to read from non-blocking socket without data => not allowed to
@@ -50,7 +42,6 @@ void OnePort::startListening() const {
     std::cerr << "Listen failed" << std ::endl;
     throw ListenerException();
   }
-  /* Sets to non blocking mode */
   if (fcntl(listener, F_SETFL, O_NONBLOCK) == -1) {
     std::cerr << "Cannot set fd to non blocking." << std ::endl;
     throw ListenerException();
@@ -68,21 +59,17 @@ void OnePort::createListenerSocket() {
     std::cerr << "Getaddrinfo error." << std ::endl;
     throw ListenerException();
   }
-
-  /* 1. get listener socket */
   for (p = address_info; p != NULL; p = p->ai_next) {
     listener = socket(p->ai_family, p->ai_socktype, p->ai_flags);
     if (listener < 0) {
       continue;
     }
     setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &y, sizeof(int));
-
-    /* 2. bind listener socket */
     if (bind(listener, p->ai_addr, p->ai_addrlen) < 0) {
       close(listener);
       continue;
     }
-    break;  // a listener is available
+    break;
   }
   freeaddrinfo(address_info);
   if (p == NULL) {
@@ -98,8 +85,9 @@ void OnePort::pollProcessInit() {
     std::cerr << "Poll error." << std ::endl;
     throw PollException();
   }
-  if (poll_elem.poll_ret == 0) {  // pas d'event
+  if (poll_elem.poll_ret == 0) {
     std::cout << "Poll timed out" << std ::endl;
+    // close connection with client when timeout ?
   }
 }
 
@@ -143,11 +131,9 @@ void OnePort::sendingMessageBackToClient(int i) const {
   std::cout << "Received from client : " << std ::endl << std::endl << buffer << std::endl;
 
   std::string response = getResponse();  // PUT HERE FUNCTION TO GET THE MESSAGE TO SEND BACK
+
   send(poll_elem.poll_fds[i].fd, response.c_str(), response.length(), 0);
   std::cout << std::endl << "*** Message sent to client ***" << std::endl;
-  // std::cout << poll_elem << std::endl;
-  //   TO DO : verif what happens with fd_elem. fd counts increases
-  //   undefined behavior when close and awful crash when deleting
 }
 
 void* OnePort::launchOnOnePort() {
@@ -162,26 +148,32 @@ void* OnePort::launchOnOnePort() {
 
     while (true) {
       pollProcessInit();
-      for (int i = 0; i < poll_elem.active_fds; i++) {
-        if ((poll_elem.poll_fds[i].revents & POLLIN) != 0) {
-          // try {
-          if (poll_elem.poll_fds[i].fd == listener) {
-            getClientRequest();
-          } else {
-            sendingMessageBackToClient(i);
-            close(new_socket);
+
+      for (int i = 0; i < poll_elem.poll_fd_size; i++) {
+        try {
+          // std::cout << i << std::endl;
+          if ((poll_elem.poll_fds[i].revents & POLLIN) != 0) {
+            if (poll_elem.poll_fds[i].fd == listener) {
+              getClientRequest();
+            } else {
+              sendingMessageBackToClient(i);
+              // check if necessary
+              poll_elem.poll_fds[i].fd = -1;
+              poll_elem.poll_fds[i].events = 0;
+              poll_elem.poll_fds[i].revents = 0;
+              poll_elem.active_fds--;
+              close(new_socket);
+              std::cout << poll_elem << std::endl;
+            }
           }
+        } catch (ServerCoreNonFatalException& e) {
+          std::cerr << e.what() << std::endl;
         }
-        // } catch (ServerCoreNonFatalException& e) {
-        //   std::cerr << e.what() << std::endl;
-        //   std::cout << poll_elem.clients_array
-        //             << std::endl;  // TO DO : check to delete appropriate fds
       }
     }
     close(listener);
-  } catch (std::exception& e) {
-    std::cerr << "*** ERROR - OnePort STOPPED LISTENING ON PORT" << port << std::endl;
-    // TO DO : close / delete
+  } catch (ServerCoreFatalException& e) {
+    std::cerr << "FATAL ERROR - SERVER STOPPED LISTENING ON PORT " << port << std::endl;
   }
   return (0);
 }

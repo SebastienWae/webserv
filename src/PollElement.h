@@ -20,7 +20,7 @@ public:
 
   void initPollElement(int listener);
   PollElement addToPollfds(int new_socket);
-  // TO DO : void deleteFromPollfds(int index); undefined behaviour for now
+  // TO DO : void deleteFromPollfds(int index);
 };
 std::ostream& operator<<(std::ostream& o, PollElement const& poll_elem);
 

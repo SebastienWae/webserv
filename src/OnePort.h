@@ -1,9 +1,8 @@
-#ifndef OnePort_H
-#define OnePort_H
+#ifndef ONEPORT_H
+#define ONEPORT_H
 
 #include <netdb.h>
 
-#include <iostream>
 #include <list>
 
 #include "PollElement.h"

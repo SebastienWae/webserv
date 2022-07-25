@@ -1,6 +1,8 @@
 #include <pthread.h>
 #include <sys/_pthread/_pthread_t.h>
+
 #include <list>
+
 #include "OnePort.h"
 int main() {
   /* Multiple ports => threads */
@@ -38,7 +40,7 @@ int main() {
 
   /* One port => to work */
   OnePort* S = new OnePort();
-  S->port = "4242";
+  S->port = "8080";
   S->launchOnOnePort();
   delete S;
 }
