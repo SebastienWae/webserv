@@ -11,7 +11,7 @@
 #include <algorithm>
 #include <exception>
 
-OnePort ::OnePort(){};
+OnePort ::OnePort(){	};
 
 OnePort::~OnePort() { delete[] poll_elem.poll_fds; };
 
@@ -154,17 +154,13 @@ void* OnePort::launchOnOnePort() {
 
       for (int i = 0; i < poll_elem.poll_fd_size; i++) {
         try {
-          // std::cout << i << std::endl;
+
           if ((poll_elem.poll_fds[i].revents & POLLIN) != 0) {
             if (poll_elem.poll_fds[i].fd == listener) {
               getClientRequest();
             } else {
               sendingMessageBackToClient(i);
-              // check if necessary
-              poll_elem.poll_fds[i].fd = -1;
-              poll_elem.poll_fds[i].events = 0;
-              poll_elem.poll_fds[i].revents = 0;
-              poll_elem.active_fds--;
+              poll_elem.removeFromPollfds(i);
               close(new_socket);
               std::cout << poll_elem << std::endl;
             }

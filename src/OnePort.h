@@ -62,6 +62,7 @@ public:
   /* TO DO : Setter and Getter to put these variables in private */
   std::string port;
 
+
 private:
   /* Element containing all needed things to execute poll */
   PollElement poll_elem;
