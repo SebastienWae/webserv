@@ -11,10 +11,7 @@ CXX = clang++
 WARNING = -Wall -Wextra -Werror
 CXXFLAGS = -O0
 
-SRCS = main.cpp \
-		OnePort.cpp \
-		PollElement.cpp 
-		
+SRCS = main.cpp Config.cpp  Location.cpp Server.cpp 
 SRCS_PATH = $(addprefix $(SRC_DIR)/,$(SRCS))
 SRCS_PATH_BONUS = $(addprefix $(SRC_DIR)/,$(SRCS_BONUS))
 OBJS = $(addprefix $(OUT_DIR)/,$(SRCS_PATH:%.cpp=%.o))

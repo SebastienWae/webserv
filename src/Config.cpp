@@ -16,10 +16,11 @@ config::config() {
   Loca[0] = "location";
   Loca[1] = "name";
   Loca[2] = "allow";
-  Loca[3] = "autoindex";
-  Loca[4] = "upload_store";
-  Loca[5] = "cgi_pass";
-  Loca[6] = "return";
+  Loca[3] = "index";
+  Loca[4] = "root";
+  Loca[5] = "upload_store";
+  Loca[6] = "cgi_pass";
+  Loca[7] = "return";
 }
 
 config& config::operator=(config const& rhs) {
@@ -33,23 +34,66 @@ config::config(config const& src) { *this = src; }
 
 config::~config() {}
 
-void config::checkconfig(const std::string& files) {
-  (void)files;
-  bool flag = false;
+std::string config::delcom(std::string const& str) {
+  std::string tmp = str;
+  size_t start = 0;
+  size_t end = 0;
+  bool flag = true;
+  for (size_t i = 0; i < tmp.size(); i++) {
+    if (tmp.compare(i, strlen("#"), "#") == 0) {
+      start = i;
+      for (size_t j = i; j < tmp.size() && flag; j++) {
+        if (tmp.compare(j, strlen("\n"), "\n") == 0) {
+          end = j;
+          tmp.erase(start, end - start);
+          flag = false;
+        }
+      }
+      i = 0;
+      flag = true;
+    }
+  }
+  return (tmp);
+}
+
+std::string config::openfile(const std::string& files) {
   std::ifstream inputFile;
   std::string str;
   std::stringstream strings;
-  int count = 0;
-  size_t start = 0;
-  size_t end = 0;
-  std::string tmp;
-  int countserv = -1;
-  inputFile.open("nginx.conf");
+  inputFile.open(files);
   if (inputFile.fail()) {
     throw config::FilesException();
   }
   strings << inputFile.rdbuf();
   str = strings.str();
+  str = delcom(str);
+  return (str);
+}
+void config::checkbracket(const std::string& str) {
+  int count = 0;
+  for (size_t i = 0; i < str.size(); i++) {
+    if (str.compare(i, strlen("{"), "{") == 0) {
+      count++;
+    }
+    if (str.compare(i, strlen("}"), "}") == 0) {
+      count--;
+    }
+  }
+  if (count != 0) {
+    throw config::BracketException();
+  }
+}
+
+void config::checkconfig(const std::string& files) {
+  bool flag = false;
+  std::string str;
+  int count = 0;
+  size_t start = 0;
+  size_t end = 0;
+  std::string tmp;
+  int countserv = -1;
+  str = openfile(files);
+  checkbracket(str);
   for (size_t i = 0; i < str.size(); i++) {
     if (str.compare(i, strlen("server"), "server") == 0) {
       for (size_t j = i; str.compare(j, 1, "{") != 0; j++) {
@@ -149,9 +193,10 @@ void config::setlocation(std::string const& str, const int* countserv) {
   size_t found = 0;
   bool flag = false;
 
-  void (Location::*setLoc[6])(const std::string& tmp)
-      = {&Location::setname,         &Location::setallow,    &Location::setautoindex,
-         &Location::setupload_store, &Location::setcgi_pass, &Location::setredirection};
+  void (Location::*setLoc[7])(const std::string& tmp)
+      = {&Location::setname,       &Location::setallow,        &Location::setindex,
+         &Location::setroot,       &Location::setupload_store, &Location::setcgi_pass,
+         &Location::setredirection};
   for (size_t i = 0; i < str.size() && !flag; i++) {
     if (str.compare(i, strlen("location"), "location") == 0) {
       start = i;
@@ -177,49 +222,17 @@ void config::setlocation(std::string const& str, const int* countserv) {
   this->Server[*countserv].setlocation(*loc);
 }
 
+void config::parse(void) {
+  for (size_t j = 0; j < this->Server.size(); j++) {
+    this->Server[j].parseserv();
+    this->Server[j].checkip();
+    // this->Server[j].checkport();
+  }
+}
+
 const char* config::FilesException::what(void) const throw() {
   return ("Exception  : Fail open files");
 }
-
-// std::vector<std::string> split;
-
-// size_t found = 0;
-// size_t foundserv = 0;
-// bool flag = true;
-// int count = 0;
-// int count2 = 0;
-
-// std::list<std::string>::iterator it = this->keyword.begin();
-// std::string buf;
-
-// found = str.find('{', found);
-// for (std::string::iterator ite = (str + found); ite != str.end(); it++) {
-//   if (*ite == '{') {
-//     count2++;
-//   }
-//   if (*ite == '}') {
-//     count2--;
-//   }
-//   if (count2 == 0) {
-//   }
-// }
-
-// servername(str);
-// foundserv = str.find(*it, foundserv);
-// it++;
-// while (it != this->keyword.end()) {
-//   while (flag) {
-//     found = str.find(*it, found);
-//     if (found == std::string::npos) {
-//       flag = false;
-//     } else {
-//       this->Server[count].port = 0;
-//       found += (*it).length();
-//     }
-//   }
-//   it++;
-//   flag = true;
-// }
-// it = this->keyword.begin();
-// foundserv += (*it).length();
-// foundserv = str.find(*it, foundserv);
+const char* config::BracketException::what(void) const throw() {
+  return ("Expction : Bracket expected");
+}
