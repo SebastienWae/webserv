@@ -1,5 +1,6 @@
 #ifndef SERVER_H
 #define SERVER_H
+#include <exception>
 #include <list>
 #include <vector>
 
@@ -16,6 +17,17 @@ public:
   void seterror_page(const std::string &tmp);
   void setclient_max_body_size(const std::string &tmp);
   void setlocation(const Location &loc);
+  void parseserv(void);
+  void checkip(void);
+  void checkport(void);
+  class IpException : public std::exception {
+  public:
+    virtual const char *what() const throw();
+  };
+  class PortException : public std::exception {
+  public:
+    virtual const char *what() const throw();
+  };
 
 private:
   std::vector<std::string> port;
