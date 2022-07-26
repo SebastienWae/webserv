@@ -49,7 +49,39 @@ void Location::parseloc(void) {
   if (this->cgi_pass.compare(0, strlen("cgi_pass "), "cgi_pass ") == 0) {
     this->cgi_pass.erase(0, strlen("cgi_pass "));
   }
-  if (this->redirection.compare(0, strlen("redirection "), "redirection ") == 0) {
-    this->redirection.erase(0, strlen("redirection "));
+  if (this->redirection.compare(0, strlen("return "), "return ") == 0) {
+    this->redirection.erase(0, strlen("return "));
   }
+}
+void Location::parseallow(void) {
+  if (this->allow.find("GET", 0) != std::string::npos) {
+    this->allowed.push_back(Http::GET);
+  }
+  if (this->allow.find("POST", 0) != std::string::npos) {
+    this->allowed.push_back(Http::POST);
+  }
+  if (this->allow.find("DELETE", 0) != std::string::npos) {
+    this->allowed.push_back(Http::DELETE);
+  }
+}
+
+void Location::trimloc(void) {
+  size_t found = std::string::npos;
+  const std::string WHITESPACE = " \n\r\t\f\v";
+  found = this->name.find_first_of(WHITESPACE);
+  if (found != std::string::npos) {
+    throw Location::TrimException();
+  }
+  // found = this->allow.find_first_of(WHITESPACE);
+  // found = this->index.find_first_of(WHITESPACE);
+  found = this->root.find_first_of(WHITESPACE);
+  // found = this->upload_store.find_first_of(WHITESPACE);
+  // found = this->cgi_pass.find_first_of(WHITESPACE);
+  // found = this->redirection.find_first_of(WHITESPACE);
+  if (found != std::string::npos) {
+    throw Location::TrimException();
+  }
+}
+const char* Location::TrimException::what(void) const throw() {
+  return ("Exception  : Trim error");
 }

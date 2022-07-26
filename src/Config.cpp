@@ -33,7 +33,26 @@ config& config::operator=(config const& rhs) {
 config::config(config const& src) { *this = src; }
 
 config::~config() {}
-
+std::string config::checkextension(int argc, char** argv) {
+  std::string tmp;
+  std::string s;
+  std::stringstream ss;
+  size_t found;
+  if (argc != 2) {
+    throw config::ArgException();
+  }
+  ss << argv[1];
+  ss >> s;
+  found = s.find_last_of('.');
+  if (found == std::string::npos) {
+    throw config::BadException();
+  }
+  tmp = s.substr(found, s.size());
+  if (tmp.compare(0, strlen(".conf"), ".conf") != 0) {
+    throw config::BadException();
+  }
+  return (s);
+}
 std::string config::delcom(std::string const& str) {
   std::string tmp = str;
   size_t start = 0;
@@ -69,6 +88,7 @@ std::string config::openfile(const std::string& files) {
   str = delcom(str);
   return (str);
 }
+
 void config::checkbracket(const std::string& str) {
   int count = 0;
   for (size_t i = 0; i < str.size(); i++) {
@@ -93,6 +113,9 @@ void config::checkconfig(const std::string& files) {
   std::string tmp;
   int countserv = -1;
   str = openfile(files);
+  if (str.find("server_name", 0) == std::string::npos) {
+    throw config::NameException();
+  }
   checkbracket(str);
   for (size_t i = 0; i < str.size(); i++) {
     if (str.compare(i, strlen("server"), "server") == 0) {
@@ -128,7 +151,7 @@ void config::setserver(std::string const& str, int* countserv) {
   size_t end = 0;
 
   void (server::*setserv[4])(const std::string& tmp)
-      = {&server::setport, &server::setserver_names, &server::seterror_page,
+      = {&server::setlisten, &server::setserver_names, &server::seterror_page,
          &server::setclient_max_body_size};
   start = str.find("server_name", found);
   if (start == std::string::npos) {
@@ -151,6 +174,9 @@ void config::setserver(std::string const& str, int* countserv) {
   for (size_t j = 1; j < 5; j++) {
     start = tmp.find(this->ser[j], found);
     if (start != std::string::npos) {
+      if (tmp.find(';', 0) == std::string::npos) {
+        throw config::CommaException();
+      }
       for (size_t k = start; tmp[k] != ';'; k++) {
         end = k;
       }
@@ -226,13 +252,22 @@ void config::parse(void) {
   for (size_t j = 0; j < this->Server.size(); j++) {
     this->Server[j].parseserv();
     this->Server[j].checkip();
-    // this->Server[j].checkport();
+    this->Server[j].checkport();
+    this->Server[j].trimserv();
   }
 }
 
 const char* config::FilesException::what(void) const throw() {
-  return ("Exception  : Fail open files");
+  return ("Exception  : Fail open file");
 }
 const char* config::BracketException::what(void) const throw() {
-  return ("Expction : Bracket expected");
+  return ("Exception : Bracket expected");
+}
+const char* config::NameException::what(void) const throw() {
+  return ("Exception : Need at least one server_name");
+}
+const char* config::CommaException::what(void) const throw() { return ("Exception : Comma"); }
+const char* config::ArgException::what(void) const throw() { return ("Exception : Bad Arguments"); }
+const char* config::BadException::what(void) const throw() {
+  return ("Exception : Bad Argument name");
 }

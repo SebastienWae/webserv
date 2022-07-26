@@ -20,7 +20,24 @@ public:
   std::string openfile(const std::string& files);
   void checkconfig(const std::string& files);
   void checkbracket(const std::string& str);
+  std::string checkextension(int argc, char** argv);
   class FilesException : public std::exception {
+  public:
+    virtual const char* what() const throw();
+  };
+  class ArgException : public std::exception {
+  public:
+    virtual const char* what() const throw();
+  };
+  class BadException : public std::exception {
+  public:
+    virtual const char* what() const throw();
+  };
+  class CommaException : public std::exception {
+  public:
+    virtual const char* what() const throw();
+  };
+  class NameException : public std::exception {
   public:
     virtual const char* what() const throw();
   };
