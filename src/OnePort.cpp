@@ -3,6 +3,7 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <string.h>
 #include <sys/fcntl.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -51,9 +52,14 @@ void OnePort::startListening() const {
 void OnePort::createListenerSocket() {
   int y = 1;
   memset((char*)&hints, 0, sizeof(hints));
-  hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
+#if defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
+  hints.ai_family = AF_INET;
+  hints.ai_flags = 0;
+#elif defined(__APPLE__) && defined(__MACH__)
+  hints.ai_family = AF_UNSPEC;
   hints.ai_flags = AI_PASSIVE;
+#endif
 
   if (getaddrinfo(NULL, (this->port).c_str(), &hints, &address_info) != 0) {
     std::cerr << "Getaddrinfo error." << std ::endl;
