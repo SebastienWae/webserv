@@ -1,11 +1,13 @@
 #include "Server.h"
 
+#include "Location.h"
+
 server::server()
     : server_names("default"), error_page("default"), client_max_body_size("default"){};
 
 server &server::operator=(server const &rhs) {
   if (this != &rhs) {
-    this->port = rhs.port;
+    this->listen = rhs.listen;
     this->server_names = rhs.server_names;
     this->error_page = rhs.error_page;
     this->client_max_body_size = rhs.client_max_body_size;
@@ -18,7 +20,7 @@ server::server(server const &src) { *this = src; };
 
 server::~server(){};
 
-void server::setport(const std::string &tmp) { this->port.push_back(tmp); }
+void server::setlisten(const std::string &tmp) { this->listen.push_back(tmp); }
 
 void server::setserver_names(const std::string &tmp) { this->server_names = tmp; }
 
@@ -29,9 +31,9 @@ void server::setclient_max_body_size(const std::string &tmp) { this->client_max_
 void server::setlocation(const Location &loc) { this->location.push_back(loc); }
 
 void server::parseserv(void) {
-  for (size_t i = 0; i < this->port.size(); i++) {
-    if (this->port[i].compare(0, strlen("listen "), "listen ") == 0) {
-      this->port[i].erase(0, strlen("listen "));
+  for (size_t i = 0; i < this->listen.size(); i++) {
+    if (this->listen[i].compare(0, strlen("listen "), "listen ") == 0) {
+      this->listen[i].erase(0, strlen("listen "));
     }
   }
   if (this->server_names.compare(0, strlen("server_name "), "server_name ") == 0) {
@@ -47,6 +49,8 @@ void server::parseserv(void) {
   }
   for (size_t i = 0; i < this->location.size(); i++) {
     this->location[i].parseloc();
+    this->location[i].parseallow();
+    this->location[i].trimloc();
   }
 }
 
@@ -55,23 +59,31 @@ void server::checkip(void) {
   size_t start = 0;
   size_t end = 0;
 
-  for (size_t i = 0; i < this->port.size(); i++) {
-    if ((this->port[i].find(':', 0)) != std::string::npos) {
-      for (size_t j = 0; j < this->port[i].size(); j++) {
-        if ((this->port[i].compare(j, strlen("."), ".")) == 0) {
+  for (size_t i = 0; i < this->listen.size(); i++) {
+    if ((this->listen[i].find(':', 0)) != std::string::npos) {
+      for (size_t j = 0; j < this->listen[i].size(); j++) {
+        if ((this->listen[i].compare(j, strlen("."), ".")) == 0) {
           end = j;
-          tmp.push_back(this->port[i].substr(start, end - start));
+          tmp.push_back(this->listen[i].substr(start, end - start));
           start = end + 1;
         }
-        if ((this->port[i].compare(j, strlen(":"), ":")) == 0) {
+        if ((this->listen[i].compare(j, strlen(":"), ":")) == 0) {
           end = j;
-          tmp.push_back(this->port[i].substr(start, end - start));
+          tmp.push_back(this->listen[i].substr(start, end - start));
           start = end + 1;
+          this->ip.push_back(this->listen[i].substr(0, end));
+          this->port.push_back(this->listen[i].substr(end + 1, this->listen[i].size()));
           break;
         }
       }
     }
   }
+  for (size_t i = 0; i < this->listen.size(); i++) {
+    if ((this->listen[i].find(':', 0)) == std::string::npos) {
+      this->port.push_back(this->listen[i].substr(0, this->listen[i].size()));
+    }
+  }
+
   if (tmp.size() > 4) {
     throw server::IpException();
   }
@@ -94,40 +106,74 @@ void server::checkip(void) {
 }
 
 void server::checkport(void) {
-  size_t found;
   std::string str;
   for (size_t i = 0; i < this->port.size(); i++) {
-    found = this->port[i].find(':', 0);
-    if (found == std::string::npos) {
+    if (this->port[i].empty()) {
+      throw server::PortException();
+    }
+    for (size_t i = 0; i < this->port.size(); i++) {
       if (this->port[i].size() > 5) {
         throw server::PortException();
       }
-      if (this->port[i].size() == 5) {
-        if (this->port[i][0] > '9' || this->port[i][0] < '0' || this->port[i][1] > '9'
-            || this->port[i][1] < '0' || this->port[i][2] > '9' || this->port[i][2] < '0'
-            || this->port[i][3] > '9' || this->port[i][3] < '0' || this->port[i][4] > '9'
-            || this->port[i][4] < '0') {
-          throw server::PortException();
-        }
-        if (this->port[i][0] == '6' || this->port[i][1] > '5') {
-          throw server::PortException();
-        }
-        if (this->port[i][0] == '6' || this->port[i][0] == '5' || this->port[i][0] > '5') {
-          throw server::PortException();
-        }
-        if (this->port[i][0] == '6' || this->port[i][0] == '5' || this->port[i][0] == '5'
-            || this->port[i][0] > '3') {
-          throw server::PortException();
-        }
-        if (this->port[i][0] == '6' || this->port[i][0] == '5' || this->port[i][0] == '5'
-            || this->port[i][0] == '3' || this->port[i][0] > '5') {
-          throw server::PortException();
-        }
-      } else {
+    }
+    if (this->port[i].size() == 1) {
+      if (this->port[i][0] > '9' || this->port[i][0] < '0') {
+        throw server::PortException();
+      }
+    }
+    if (this->port[i].size() == 2) {
+      if (this->port[i][0] > '9' || this->port[i][0] < '0' || this->port[i][1] > '9'
+          || this->port[i][1] < '0') {
+        throw server::PortException();
+      }
+    }
+    if (this->port[i].size() == 3) {
+      if (this->port[i][0] > '9' || this->port[i][0] < '0' || this->port[i][1] > '9'
+          || this->port[i][1] < '0' || this->port[i][2] > '9' || this->port[i][2] < '0') {
+        throw server::PortException();
+      }
+    }
+    if (this->port[i].size() == 4) {
+      if (this->port[i][0] > '9' || this->port[i][0] < '0' || this->port[i][1] > '9'
+          || this->port[i][1] < '0' || this->port[i][2] > '9' || this->port[i][2] < '0'
+          || this->port[i][3] > '9' || this->port[i][3] < '0') {
+        throw server::PortException();
+      }
+    }
+    if (this->port[i].size() == 5) {
+      if (this->port[i][0] > '9' || this->port[i][0] < '0' || this->port[i][1] > '9'
+          || this->port[i][1] < '0' || this->port[i][2] > '9' || this->port[i][2] < '0'
+          || this->port[i][3] > '9' || this->port[i][3] < '0' || this->port[i][4] > '9'
+          || this->port[i][4] < '0') {
+        throw server::PortException();
+      }
+      if (this->port[i][0] == '6' && this->port[i][1] > '5') {
+        throw server::PortException();
+      }
+      if (this->port[i][0] == '6' && this->port[i][1] == '5' && this->port[i][2] > '5') {
+        throw server::PortException();
+      }
+      if (this->port[i][0] == '6' && this->port[i][1] == '5' && this->port[i][2] == '5'
+          && this->port[i][3] > '3') {
+        throw server::PortException();
+      }
+      if (this->port[i][0] == '6' && this->port[i][1] == '5' && this->port[i][2] == '5'
+          && this->port[i][3] == '3' && this->port[i][4] > '5') {
+        throw server::PortException();
       }
     }
   }
 }
-
+void server::trimserv(void) {
+  size_t found = std::string::npos;
+  const std::string WHITESPACE = " \n\r\t\f\v";
+  found = this->client_max_body_size.find_first_of(WHITESPACE);
+  if (found != std::string::npos) {
+    throw server::TrimservException();
+  }
+}
 const char *server::IpException::what(void) const throw() { return ("Exception  : Bad IP"); }
+const char *server::TrimservException::what(void) const throw() {
+  return ("Exception  : Trimserv");
+}
 const char *server::PortException::what(void) const throw() { return ("Exception  : Bad Port"); }

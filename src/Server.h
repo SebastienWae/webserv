@@ -12,7 +12,7 @@ public:
   server &operator=(server const &rhs);
   server(server const &src);
   ~server();
-  void setport(const std::string &tmp);
+  void setlisten(const std::string &tmp);
   void setserver_names(const std::string &tmp);
   void seterror_page(const std::string &tmp);
   void setclient_max_body_size(const std::string &tmp);
@@ -20,6 +20,7 @@ public:
   void parseserv(void);
   void checkip(void);
   void checkport(void);
+  void trimserv(void);
   class IpException : public std::exception {
   public:
     virtual const char *what() const throw();
@@ -28,8 +29,14 @@ public:
   public:
     virtual const char *what() const throw();
   };
+  class TrimservException : public std::exception {
+  public:
+    virtual const char *what() const throw();
+  };
 
 private:
+  std::vector<std::string> listen;
+  std::vector<std::string> ip;
   std::vector<std::string> port;
   std::string server_names;
   std::string error_page;

@@ -3,10 +3,10 @@
 
 #include "Config.h"
 
-int main() {
+int main(int argc, char **argv) {
   config test;
   try {
-    test.checkconfig("nginx.conf");
+    test.checkconfig(test.checkextension(argc, argv));
     test.parse();
   } catch (std::exception &e) {
     std::cerr << e.what() << std::endl;

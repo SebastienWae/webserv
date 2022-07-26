@@ -1,7 +1,11 @@
 #ifndef LOCATION_H
 #define LOCATION_H
 
+#include <exception>
 #include <iostream>
+#include <vector>
+
+#include "Http.h"
 
 class Location {
 public:
@@ -17,11 +21,17 @@ public:
   void setcgi_pass(const std::string &tmp);
   void setredirection(const std::string &tmp);
   void parseloc(void);
-  void checkport(void);
+  void trimloc(void);
+  void parseallow(void);
+  class TrimException : public std::exception {
+  public:
+    virtual const char *what() const throw();
+  };
 
 private:
   std::string name;
   std::string allow;
+  std::vector<enum Http::method> allowed;
   std::string index;
   std::string root;
   std::string upload_store;
