@@ -1,26 +1,28 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
-#include <__nullptr>
+
 #include <exception>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <string>
 #include <vector>
 
-#include "Server.h"
-#define variable 8
-class config {
+#include "HttpResponseStatus.h"
+#include "ServerConfig.h"
+
+class Config {
 public:
-  config();
-  config& operator=(config const& rhs);
-  config(config const& src);
-  ~config();
-  std::string delcom(std::string const& str);
-  std::string openfile(const std::string& files);
+  Config();
+  Config& operator=(Config const& rhs);
+  Config(Config const& src);
+  ~Config();
+  static std::string delcom(std::string const& str);
+  static std::string openfile(const std::string& files);
   void checkconfig(const std::string& files);
-  void checkbracket(const std::string& str);
-  std::string checkextension(int argc, char** argv);
+  static void checkbracket(const std::string& str);
+  static std::string checkextension(int argc, char** argv);
   class FilesException : public std::exception {
   public:
     virtual const char* what() const throw();
@@ -49,11 +51,13 @@ public:
   void seeklocation(std::string const& str, int* countserv);
   void setlocation(std::string const& str, const int* countserv);
   void parse(void);
+  std::vector<ServerConfig> getServerConfig() const;
 
 private:
-  std::vector<server> Server;
-  std::string ser[5];
-  std::string Loca[variable];
+  std::vector<ServerConfig> servers;
+  std::vector<std::string> ser;
+  std::vector<std::string> loca;
+  std::map<HttpResponseClientError::code, std::string> client_error_pages;
 };
 
 #endif

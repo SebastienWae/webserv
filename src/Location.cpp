@@ -82,6 +82,4 @@ void Location::trimloc(void) {
     throw Location::TrimException();
   }
 }
-const char* Location::TrimException::what(void) const throw() {
-  return ("Exception  : Trim error");
-}
+const char* Location::TrimException::what(void) const throw() { return ("Exception  : Trim error"); }

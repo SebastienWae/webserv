@@ -28,12 +28,12 @@ PollElement PollElement::addToPollfds(int new_socket) {
   return (*this);
 }
 
-PollElement PollElement::removeFromPollfds(int i)  {
+PollElement PollElement::removeFromPollfds(int i) {
   poll_fds[i].fd = -1;
   poll_fds[i].events = 0;
   poll_fds[i].revents = 0;
-  active_fds --;
- return (*this);
+  active_fds--;
+  return (*this);
 }
 
 void PollElement::initPollElement(int listener) {
@@ -50,8 +50,7 @@ void PollElement::initPollElement(int listener) {
 };
 
 std::ostream& operator<<(std::ostream& o, PollElement const& poll_elem) {
-  std::cout << "Max size : " << poll_elem.poll_fd_size << " Active fds : " << poll_elem.active_fds
-            << std::endl;
+  std::cout << "Max size : " << poll_elem.poll_fd_size << " Active fds : " << poll_elem.active_fds << std::endl;
 
   for (int i = 0; i < poll_elem.poll_fd_size; i++) {
     std::cout << "----------" << std::endl;

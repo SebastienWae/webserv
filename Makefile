@@ -12,9 +12,11 @@ WARNING = -Wall -Wextra -Werror
 CXXFLAGS = -O0
 
 SRCS = main.cpp \
+	Server.cpp \
+	PollElement.cpp \
 	Config.cpp \
 	Location.cpp \
-	Server.cpp \
+	ServerConfig.cpp \
 	Utils.cpp \
 	HttpRequest.cpp \
 	HttpResponse.cpp \
@@ -39,7 +41,7 @@ $(DEBUG_DIR)/%.o: %.cpp
 	$(COMPILE.cc) $< $(WARNING) -MMD -MP -o $@
 
 .PHONY: debug debug_clean debug_fclean debug_re
-debug: CXXFLAGS = -g3 -fsanitize=address -fno-omit-frame-pointer \
+debug: CXXFLAGS = -gdwarf-4 -fsanitize=address -fno-omit-frame-pointer \
 	-fno-optimize-sibling-calls
 debug: WARNING = -Wall -Wextra
 debug: $(OBJS_DEBUG)

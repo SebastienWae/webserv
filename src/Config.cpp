@@ -3,57 +3,61 @@
 #include <string.h>
 
 #include <__nullptr>
+#include <iterator>
+#include <vector>
 
 #include "Location.h"
-#include "Server.h"
+#include "ServerConfig.h"
 
-config::config() {
-  ser[0] = "server";
-  ser[1] = "listen";
-  ser[2] = "server_name";
-  ser[3] = "error_page";
-  ser[4] = "client_max_body_size";
-  Loca[0] = "location";
-  Loca[1] = "name";
-  Loca[2] = "allow";
-  Loca[3] = "index";
-  Loca[4] = "root";
-  Loca[5] = "upload_store";
-  Loca[6] = "cgi_pass";
-  Loca[7] = "return";
+Config::Config() {
+  ser.push_back("server");
+  ser.push_back("listen");
+  ser.push_back("server_name");
+  ser.push_back("error_page");
+  ser.push_back("client_max_body_size");
+  loca.push_back("location");
+  loca.push_back("name");
+  loca.push_back("allow");
+  loca.push_back("index");
+  loca.push_back("root");
+  loca.push_back("upload_store");
+  loca.push_back("cgi_pass");
+  loca.push_back("return");
 }
 
-config& config::operator=(config const& rhs) {
+Config& Config::operator=(Config const& rhs) {
   if (this != &rhs) {
-    this->Server = rhs.Server;
+    this->servers = rhs.servers;
   }
   return (*this);
 }
 
-config::config(config const& src) { *this = src; }
+Config::Config(Config const& src) { *this = src; }
 
-config::~config() {}
-std::string config::checkextension(int argc, char** argv) {
+Config::~Config() {}
+
+std::string Config::checkextension(int argc, char** argv) {
   std::string tmp;
   std::string s;
   std::stringstream ss;
   size_t found;
   if (argc != 2) {
-    throw config::ArgException();
+    throw Config::ArgException();
   }
   ss << argv[1];
   ss >> s;
   found = s.find_last_of('.');
   if (found == std::string::npos) {
-    throw config::BadException();
+    throw Config::BadException();
   }
   tmp = s.substr(found, s.size());
   if (tmp.compare(0, strlen(".conf"), ".conf") != 0) {
-    throw config::BadException();
+    throw Config::BadException();
   }
   return (s);
 }
-std::string config::delcom(std::string const& str) {
+
+std::string Config::delcom(std::string const& str) {
   std::string tmp = str;
   size_t start = 0;
   size_t end = 0;
@@ -75,13 +79,13 @@ std::string config::delcom(std::string const& str) {
   return (tmp);
 }
 
-std::string config::openfile(const std::string& files) {
+std::string Config::openfile(const std::string& files) {
   std::ifstream inputFile;
   std::string str;
   std::stringstream strings;
   inputFile.open(files);
   if (inputFile.fail()) {
-    throw config::FilesException();
+    throw Config::FilesException();
   }
   strings << inputFile.rdbuf();
   str = strings.str();
@@ -89,7 +93,7 @@ std::string config::openfile(const std::string& files) {
   return (str);
 }
 
-void config::checkbracket(const std::string& str) {
+void Config::checkbracket(const std::string& str) {
   int count = 0;
   for (size_t i = 0; i < str.size(); i++) {
     if (str.compare(i, strlen("{"), "{") == 0) {
@@ -100,11 +104,11 @@ void config::checkbracket(const std::string& str) {
     }
   }
   if (count != 0) {
-    throw config::BracketException();
+    throw Config::BracketException();
   }
 }
 
-void config::checkconfig(const std::string& files) {
+void Config::checkconfig(const std::string& files) {
   bool flag = false;
   std::string str;
   int count = 0;
@@ -114,7 +118,7 @@ void config::checkconfig(const std::string& files) {
   int countserv = -1;
   str = openfile(files);
   if (str.find("server_name", 0) == std::string::npos) {
-    throw config::NameException();
+    throw Config::NameException();
   }
   checkbracket(str);
   for (size_t i = 0; i < str.size(); i++) {
@@ -144,21 +148,21 @@ void config::checkconfig(const std::string& files) {
   }
 }
 
-void config::setserver(std::string const& str, int* countserv) {
+void Config::setserver(std::string const& str, int* countserv) {
   size_t found = 0;
   std::string tmp;
   size_t start = 0;
   size_t end = 0;
 
-  void (server::*setserv[4])(const std::string& tmp)
-      = {&server::setlisten, &server::setserver_names, &server::seterror_page,
-         &server::setclient_max_body_size};
+  void (ServerConfig::*setserv[4])(const std::string& tmp)
+      = {&ServerConfig::setlisten, &ServerConfig::setserver_names, &ServerConfig::seterror_page,
+         &ServerConfig::setclient_max_body_size};
   start = str.find("server_name", found);
   if (start == std::string::npos) {
     *countserv = 0;
   } else {
-    server* sev = new server;
-    this->Server.push_back(*sev);
+    ServerConfig* sev = new ServerConfig;
+    servers.push_back(*sev);
     *countserv = *countserv + 1;
   }
   if (str.find("location", 0) != std::string::npos) {
@@ -171,17 +175,17 @@ void config::setserver(std::string const& str, int* countserv) {
     tmp = str;
   }
 
-  for (size_t j = 1; j < 5; j++) {
-    start = tmp.find(this->ser[j], found);
+  for (std::vector<std::string>::iterator it = ser.begin() + 1; it != ser.end(); ++it) {
+    start = tmp.find(*it, found);
     if (start != std::string::npos) {
       if (tmp.find(';', 0) == std::string::npos) {
-        throw config::CommaException();
+        throw Config::CommaException();
       }
       for (size_t k = start; tmp[k] != ';'; k++) {
         end = k;
       }
       end++;
-      (this->Server[*countserv].*setserv[j - 1])(tmp.substr(start, end - start));
+      (this->servers[*countserv].*setserv[std::distance(ser.begin() + 1, it)])(tmp.substr(start, end - start));
     }
   }
   if (str.find("location", 0) != std::string::npos) {
@@ -189,7 +193,7 @@ void config::setserver(std::string const& str, int* countserv) {
   }
 }
 
-void config::seeklocation(std::string const& str, int* countserv) {
+void Config::seeklocation(std::string const& str, int* countserv) {
   std::string tmp;
   size_t start = 0;
   size_t end = 0;
@@ -212,17 +216,21 @@ void config::seeklocation(std::string const& str, int* countserv) {
   }
 }
 
-void config::setlocation(std::string const& str, const int* countserv) {
+void Config::setlocation(std::string const& str, const int* countserv) {
   Location* loc = new Location;
   size_t start = 0;
   size_t end = 0;
   size_t found = 0;
   bool flag = false;
 
-  void (Location::*setLoc[7])(const std::string& tmp)
-      = {&Location::setname,       &Location::setallow,        &Location::setindex,
-         &Location::setroot,       &Location::setupload_store, &Location::setcgi_pass,
-         &Location::setredirection};
+  std::vector<void (Location::*)(const std::string& tmp)> setLoc;
+  setLoc.push_back(&Location::setname);
+  setLoc.push_back(&Location::setallow);
+  setLoc.push_back(&Location::setindex);
+  setLoc.push_back(&Location::setroot);
+  setLoc.push_back(&Location::setupload_store);
+  setLoc.push_back(&Location::setcgi_pass);
+  setLoc.push_back(&Location::setredirection);
   for (size_t i = 0; i < str.size() && !flag; i++) {
     if (str.compare(i, strlen("location"), "location") == 0) {
       start = i;
@@ -236,38 +244,32 @@ void config::setlocation(std::string const& str, const int* countserv) {
     }
   }
 
-  for (size_t j = 2; j < variable; j++) {
-    start = str.find(this->Loca[j], found);
+  for (std::vector<std::string>::iterator it = loca.begin() + 2; it != loca.end(); ++it) {
+    start = str.find(*it, found);
     if (start != std::string::npos) {
       for (size_t k = start; str[k] != '\n'; k++) {
         end = k;
       }
-      (loc->*setLoc[j - 1])(str.substr(start, end - start + 1));
+      (loc->*setLoc[std::distance(loca.begin(), it) - 1])(str.substr(start, end - start + 1));
     }
   }
-  this->Server[*countserv].setlocation(*loc);
+  this->servers[*countserv].setlocation(*loc);
 }
 
-void config::parse(void) {
-  for (size_t j = 0; j < this->Server.size(); j++) {
-    this->Server[j].parseserv();
-    this->Server[j].checkip();
-    this->Server[j].checkport();
-    this->Server[j].trimserv();
+void Config::parse(void) {
+  for (size_t j = 0; j < this->servers.size(); j++) {
+    this->servers[j].parseserv();
+    this->servers[j].checkip();
+    this->servers[j].checkport();
+    this->servers[j].trimserv();
   }
 }
 
-const char* config::FilesException::what(void) const throw() {
-  return ("Exception  : Fail open file");
-}
-const char* config::BracketException::what(void) const throw() {
-  return ("Exception : Bracket expected");
-}
-const char* config::NameException::what(void) const throw() {
-  return ("Exception : Need at least one server_name");
-}
-const char* config::CommaException::what(void) const throw() { return ("Exception : Comma"); }
-const char* config::ArgException::what(void) const throw() { return ("Exception : Bad Arguments"); }
-const char* config::BadException::what(void) const throw() {
-  return ("Exception : Bad Argument name");
-}
+const char* Config::FilesException::what(void) const throw() { return ("Exception  : Fail open file"); }
+const char* Config::BracketException::what(void) const throw() { return ("Exception : Bracket expected"); }
+const char* Config::NameException::what(void) const throw() { return ("Exception : Need at least one server_name"); }
+const char* Config::CommaException::what(void) const throw() { return ("Exception : Comma"); }
+const char* Config::ArgException::what(void) const throw() { return ("Exception : Bad Arguments"); }
+const char* Config::BadException::what(void) const throw() { return ("Exception : Bad Argument name"); }
+
+std::vector<ServerConfig> Config::getServerConfig() const { return servers; }

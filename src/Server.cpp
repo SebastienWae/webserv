@@ -1,179 +1,166 @@
 #include "Server.h"
 
-#include "Location.h"
+#include <arpa/inet.h>
+#include <fcntl.h>
+#include <netinet/in.h>
+#include <sys/fcntl.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
 
-server::server()
-    : server_names("default"), error_page("default"), client_max_body_size("default"){};
+#include <algorithm>
+#include <exception>
 
-server &server::operator=(server const &rhs) {
-  if (this != &rhs) {
-    this->listen = rhs.listen;
-    this->server_names = rhs.server_names;
-    this->error_page = rhs.error_page;
-    this->client_max_body_size = rhs.client_max_body_size;
-    this->location = rhs.location;
-  }
-  return (*this);
+#include "HttpResponse.h"
+#include "HttpResponseStatus.h"
+
+Server::Server(ServerConfig const& config) : config_(config){};
+
+Server::~Server() { delete[] poll_elem.poll_fds; };
+
+char const* Server::ServerCoreFatalException::what() const throw() { return "Server core fatal error."; }
+char const* Server::ServerCoreNonFatalException::what() const throw() { return "Server error."; }
+char const* Server::ListenerException::what() const throw() { return "Listener error."; }
+char const* Server::PollException::what() const throw() { return "Poll error."; }
+char const* Server::ClientGetRequestException::what() const throw() { return "Error while getting client request."; }
+char const* Server::ClientSendResponseException::what() const throw() {
+  return "Error while sending response to client.";
 }
 
-server::server(server const &src) { *this = src; };
+void* Server::getAddress(struct sockaddr* sockaddress) {
+  if (sockaddress->sa_family == AF_INET) {
+    return &(((struct sockaddr_in*)sockaddress)->sin_addr);
+  }
+  return &(((struct sockaddr_in6*)sockaddress)->sin6_addr);
+}
 
-server::~server(){};
+// If try to read from non-blocking socket without data => not allowed to
+// block—it => return -1 + errno set to EAGAIN or EWOULDBLOCK
+void Server::startListening() const {
+  if (listen(listener, MAX_PENDING_CONNECTIONS) < 0) {
+    std::cerr << "Listen failed" << std ::endl;
+    throw ListenerException();
+  }
+  if (fcntl(listener, F_SETFL, O_NONBLOCK) == -1) {
+    std::cerr << "Cannot set fd to non blocking." << std ::endl;
+    throw ListenerException();
+  }
+}
 
-void server::setlisten(const std::string &tmp) { this->listen.push_back(tmp); }
+void Server::createListenerSocket() {
+  int y = 1;
+  memset((char*)&hints, 0, sizeof(hints));
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags = AI_PASSIVE;
 
-void server::setserver_names(const std::string &tmp) { this->server_names = tmp; }
-
-void server::seterror_page(const std::string &tmp) { this->error_page = tmp; }
-
-void server::setclient_max_body_size(const std::string &tmp) { this->client_max_body_size = tmp; }
-
-void server::setlocation(const Location &loc) { this->location.push_back(loc); }
-
-void server::parseserv(void) {
-  for (size_t i = 0; i < this->listen.size(); i++) {
-    if (this->listen[i].compare(0, strlen("listen "), "listen ") == 0) {
-      this->listen[i].erase(0, strlen("listen "));
+  if (getaddrinfo(NULL, (this->port).c_str(), &hints, &address_info) != 0) {
+    std::cerr << "Getaddrinfo error." << std ::endl;
+    throw ListenerException();
+  }
+  for (p = address_info; p != NULL; p = p->ai_next) {
+    listener = socket(p->ai_family, p->ai_socktype, p->ai_flags);
+    if (listener < 0) {
+      continue;
     }
+    setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &y, sizeof(int));
+    if (bind(listener, p->ai_addr, p->ai_addrlen) < 0) {
+      close(listener);
+      continue;
+    }
+    break;
   }
-  if (this->server_names.compare(0, strlen("server_name "), "server_name ") == 0) {
-    this->server_names.erase(0, strlen("server_name "));
+  freeaddrinfo(address_info);
+  if (p == NULL) {
+    std::cerr << "Bind failed" << std ::endl;
+    throw ListenerException();
   }
-  if (this->error_page.compare(0, strlen("error_page "), "error_page ") == 0) {
-    this->error_page.erase(0, strlen("error_page "));
+};
+
+void Server::pollProcessInit() {
+  poll_elem.poll_ret = poll(&poll_elem.poll_fds[0], poll_elem.active_fds, TIMEOUT);
+  // 5000 :  timeout / pas de timeout => set a -1
+  if (poll_elem.poll_ret == -1) {
+    std::cerr << "Poll error." << std ::endl;
+    throw PollException();
   }
-  if (this->client_max_body_size.compare(0, strlen("client_max_body_size "),
-                                         "client_max_body_size ")
-      == 0) {
-    this->client_max_body_size.erase(0, strlen("client_max_body_size "));
-  }
-  for (size_t i = 0; i < this->location.size(); i++) {
-    this->location[i].parseloc();
-    this->location[i].parseallow();
-    this->location[i].trimloc();
+  if (poll_elem.poll_ret == 0) {
+    std::cout << "Poll timed out" << std ::endl;
+    // close connection with client when timeout ?
   }
 }
 
-void server::checkip(void) {
-  std::vector<std::string> tmp;
-  size_t start = 0;
-  size_t end = 0;
+/* Called when data is ready to be received */
+void Server::getClientRequest() {
+  address_len = sizeof(client_address);
+  if ((new_socket = accept(listener, (struct sockaddr*)&client_address, (socklen_t*)&address_len)) < 0) {
+    std::cerr << "Accept error" << std ::endl;
+    throw ClientGetRequestException();
+  }
+  poll_elem = poll_elem.addToPollfds(new_socket);
+  std::cout << std::endl
+            << "*** New connection from "
+            << inet_ntop(client_address.ss_family, getAddress((struct sockaddr*)&client_address), remoteIP,
+                         INET6_ADDRSTRLEN)
+            << " ***" << std::endl
+            << std::endl;
+}
 
-  for (size_t i = 0; i < this->listen.size(); i++) {
-    if ((this->listen[i].find(':', 0)) != std::string::npos) {
-      for (size_t j = 0; j < this->listen[i].size(); j++) {
-        if ((this->listen[i].compare(j, strlen("."), ".")) == 0) {
-          end = j;
-          tmp.push_back(this->listen[i].substr(start, end - start));
-          start = end + 1;
+void Server::sendingMessageBackToClient(int index, HttpResponse const& response) {
+  char buffer[BUFSIZE_CLIENT_REQUEST];  // TO SET
+  long int ret_recv = recv(poll_elem.poll_fds[index].fd, buffer, BUFSIZE_CLIENT_REQUEST, 0);
+
+  if (ret_recv == 0) {
+    std::cerr << std::endl << "Error: Connection closed by client" << std::endl;
+    poll_elem = poll_elem.removeFromPollfds(index);
+    throw ClientSendResponseException();
+  }
+  if (ret_recv < 0) {
+    std::cerr << std::endl << "Error: No byte to read" << std::endl;
+    poll_elem = poll_elem.removeFromPollfds(index);
+    throw ClientSendResponseException();
+  }
+  std::cout << "Received from client : " << std ::endl << std::endl << buffer << std::endl;
+
+  std::string raw_response = response.getRaw();
+
+  send(poll_elem.poll_fds[index].fd, raw_response.c_str(), raw_response.length(), 0);
+  std::cout << std::endl << "*** Message sent to client ***" << std::endl;
+}
+
+void Server::run() {
+  try {
+    createListenerSocket();
+    startListening();
+    poll_elem.initPollElement(listener);
+
+    std::cout << std::endl
+              << "-----------> READY TO START ON PORT " << port << " <-----------" << std::endl
+              << std::endl;
+
+    while (true) {
+      pollProcessInit();
+
+      for (int i = 0; i < poll_elem.poll_fd_size; i++) {
+        try {
+          if ((poll_elem.poll_fds[i].revents & POLLIN) != 0) {
+            if (poll_elem.poll_fds[i].fd == listener) {
+              getClientRequest();
+            } else {
+              HttpResponse resp(HttpResponseSuccess::_200);
+              sendingMessageBackToClient(i, resp);
+              poll_elem.removeFromPollfds(i);
+              close(new_socket);
+              std::cout << poll_elem << std::endl;
+            }
+          }
+        } catch (ServerCoreNonFatalException& e) {
+          std::cerr << e.what() << std::endl;
         }
-        if ((this->listen[i].compare(j, strlen(":"), ":")) == 0) {
-          end = j;
-          tmp.push_back(this->listen[i].substr(start, end - start));
-          start = end + 1;
-          this->ip.push_back(this->listen[i].substr(0, end));
-          this->port.push_back(this->listen[i].substr(end + 1, this->listen[i].size()));
-          break;
-        }
       }
     }
-  }
-  for (size_t i = 0; i < this->listen.size(); i++) {
-    if ((this->listen[i].find(':', 0)) == std::string::npos) {
-      this->port.push_back(this->listen[i].substr(0, this->listen[i].size()));
-    }
-  }
-
-  if (tmp.size() > 4) {
-    throw server::IpException();
-  }
-  for (size_t i = 0; i < tmp.size(); i++) {
-    for (size_t j = 0; j < tmp[i].size(); j++) {
-      if (tmp[i][0] > '2' || tmp[i][0] < '0') {
-        throw server::IpException();
-      }
-      if (tmp[i][0] == '2' && (tmp[i][1] > '5')) {
-        throw server::IpException();
-      }
-      if (tmp[i][0] == '2' && (tmp[i][1] == '5') && (tmp[i][1] > '5')) {
-        throw server::IpException();
-      }
-      if (tmp[i][j] > '9' || tmp[i][j] < '0') {
-        throw server::IpException();
-      }
-    }
+    close(listener);
+  } catch (ServerCoreFatalException& e) {
+    std::cerr << "FATAL ERROR - SERVER STOPPED LISTENING ON PORT " << port << std::endl;
   }
 }
-
-void server::checkport(void) {
-  std::string str;
-  for (size_t i = 0; i < this->port.size(); i++) {
-    if (this->port[i].empty()) {
-      throw server::PortException();
-    }
-    for (size_t i = 0; i < this->port.size(); i++) {
-      if (this->port[i].size() > 5) {
-        throw server::PortException();
-      }
-    }
-    if (this->port[i].size() == 1) {
-      if (this->port[i][0] > '9' || this->port[i][0] < '0') {
-        throw server::PortException();
-      }
-    }
-    if (this->port[i].size() == 2) {
-      if (this->port[i][0] > '9' || this->port[i][0] < '0' || this->port[i][1] > '9'
-          || this->port[i][1] < '0') {
-        throw server::PortException();
-      }
-    }
-    if (this->port[i].size() == 3) {
-      if (this->port[i][0] > '9' || this->port[i][0] < '0' || this->port[i][1] > '9'
-          || this->port[i][1] < '0' || this->port[i][2] > '9' || this->port[i][2] < '0') {
-        throw server::PortException();
-      }
-    }
-    if (this->port[i].size() == 4) {
-      if (this->port[i][0] > '9' || this->port[i][0] < '0' || this->port[i][1] > '9'
-          || this->port[i][1] < '0' || this->port[i][2] > '9' || this->port[i][2] < '0'
-          || this->port[i][3] > '9' || this->port[i][3] < '0') {
-        throw server::PortException();
-      }
-    }
-    if (this->port[i].size() == 5) {
-      if (this->port[i][0] > '9' || this->port[i][0] < '0' || this->port[i][1] > '9'
-          || this->port[i][1] < '0' || this->port[i][2] > '9' || this->port[i][2] < '0'
-          || this->port[i][3] > '9' || this->port[i][3] < '0' || this->port[i][4] > '9'
-          || this->port[i][4] < '0') {
-        throw server::PortException();
-      }
-      if (this->port[i][0] == '6' && this->port[i][1] > '5') {
-        throw server::PortException();
-      }
-      if (this->port[i][0] == '6' && this->port[i][1] == '5' && this->port[i][2] > '5') {
-        throw server::PortException();
-      }
-      if (this->port[i][0] == '6' && this->port[i][1] == '5' && this->port[i][2] == '5'
-          && this->port[i][3] > '3') {
-        throw server::PortException();
-      }
-      if (this->port[i][0] == '6' && this->port[i][1] == '5' && this->port[i][2] == '5'
-          && this->port[i][3] == '3' && this->port[i][4] > '5') {
-        throw server::PortException();
-      }
-    }
-  }
-}
-void server::trimserv(void) {
-  size_t found = std::string::npos;
-  const std::string WHITESPACE = " \n\r\t\f\v";
-  found = this->client_max_body_size.find_first_of(WHITESPACE);
-  if (found != std::string::npos) {
-    throw server::TrimservException();
-  }
-}
-const char *server::IpException::what(void) const throw() { return ("Exception  : Bad IP"); }
-const char *server::TrimservException::what(void) const throw() {
-  return ("Exception  : Trimserv");
-}
-const char *server::PortException::what(void) const throw() { return ("Exception  : Bad Port"); }

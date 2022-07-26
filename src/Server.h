@@ -1,46 +1,86 @@
 #ifndef SERVER_H
 #define SERVER_H
-#include <exception>
+
+#include <netdb.h>
+
 #include <list>
-#include <vector>
 
-#include "Location.h"
+#include "HttpResponse.h"
+#include "PollElement.h"
+#include "ServerConfig.h"
 
-class server {
+/*queue size of pending connections. if full => sends
+ECONNREFUSED or tries again to connect - depends on client */
+#define MAX_PENDING_CONNECTIONS 50   // TO SET
+#define BUFSIZE_CLIENT_REQUEST 1024  // TO SET
+
+#define TIMEOUT 5000
+
+class Server {
 public:
-  server();
-  server &operator=(server const &rhs);
-  server(server const &src);
-  ~server();
-  void setlisten(const std::string &tmp);
-  void setserver_names(const std::string &tmp);
-  void seterror_page(const std::string &tmp);
-  void setclient_max_body_size(const std::string &tmp);
-  void setlocation(const Location &loc);
-  void parseserv(void);
-  void checkip(void);
-  void checkport(void);
-  void trimserv(void);
-  class IpException : public std::exception {
+  Server(ServerConfig const& config);
+  ~Server();
+  class ServerCoreFatalException : public std::exception {
   public:
-    virtual const char *what() const throw();
+    virtual char const* what() const throw();
   };
-  class PortException : public std::exception {
+
+  class ServerCoreNonFatalException : public std::exception {
   public:
-    virtual const char *what() const throw();
+    virtual char const* what() const throw();
   };
-  class TrimservException : public std::exception {
+  /* to use for multiple ports => multithread */
+  static void* launchHelper(void* current);
+
+  void run();
+
+  /* Listener functions */
+  void createListenerSocket();
+  void startListening() const;
+  class ListenerException : public ServerCoreFatalException {
   public:
-    virtual const char *what() const throw();
+    virtual char const* what() const throw();
   };
+
+  /* Poll functions */
+  void pollProcessInit();
+  class PollException : public ServerCoreNonFatalException {
+  public:
+    virtual char const* what() const throw();
+  };
+
+  /* Client functions */
+  static void* getAddress(struct sockaddr* sockaddress);
+  void getClientRequest();
+  class ClientGetRequestException : public ServerCoreNonFatalException {
+  public:
+    virtual char const* what() const throw();
+  };
+  void sendingMessageBackToClient(int index, HttpResponse const& response);
+  class ClientSendResponseException : public ServerCoreNonFatalException {
+  public:
+    virtual char const* what() const throw();
+  };
+
+  /* TO DO : Setter and Getter to put these variables in private */
+  std::string port;
 
 private:
-  std::vector<std::string> listen;
-  std::vector<std::string> ip;
-  std::vector<std::string> port;
-  std::string server_names;
-  std::string error_page;
-  std::string client_max_body_size;
-  std::vector<Location> location;
+  /* Element containing all needed things to execute poll */
+  PollElement poll_elem;
+
+  /* Listener variables */
+  int listener;
+  struct addrinfo hints;
+  struct addrinfo* address_info;
+  struct addrinfo* p;
+
+  /* Client request variables */
+  int new_socket;
+  sockaddr_storage client_address;
+  socklen_t address_len;
+  char remoteIP[INET6_ADDRSTRLEN];
+  ServerConfig const& config_;
 };
+
 #endif
