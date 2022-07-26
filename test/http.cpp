@@ -1,10 +1,12 @@
+#include <i386/types.h>
+
 #include <exception>
 #include <fstream>
 #include <iostream>
 #include <map>
 #include <string>
 
-#include "Http.h"
+#include "../src/Http.h"
 #include "HttpRequest.h"
 #include "HttpResponse.h"
 #include "HttpResponseStatus.h"
@@ -87,31 +89,133 @@ int main(int argc, char **argv) {
   }
   {
     std::cout << "## TEST URI ##" << std::endl;
-    Uri empty("");
-    std::cout << empty.getRaw() << std::endl;
 
-    Uri good("http://google.com");
-    std::cout << good.getRaw() << std::endl;
+    std::string uri;
+    try {
+      Uri u(uri);
+      std::cout << "success: " << u.getRaw() << std::endl;
+    } catch (std::exception) {
+      std::cout << "error: " << uri << std::endl;
+    }
 
-    Uri user("http://user:pass@test.com");
-    std::cout << user.getRaw() << std::endl;
+    uri = "http://google.com";
+    try {
+      Uri u(uri);
+      std::cout << "success: " << u.getRaw() << std::endl;
+    } catch (std::exception) {
+      std::cout << "error: " << uri << std::endl;
+    }
 
-    Uri ip("http://123.123.123.123");
-    std::cout << ip.getRaw() << std::endl;
+    uri = "http://user:pass@test.com";
+    try {
+      Uri u(uri);
+      std::cout << "success: " << u.getRaw() << std::endl;
+    } catch (std::exception) {
+      std::cout << "error: " << uri << std::endl;
+    }
 
-    Uri port("http://localhost:878");
-    std::cout << port.getRaw() << std::endl;
+    uri = "http://123.123.123.123";
+    try {
+      Uri u(uri);
+      std::cout << "success: " << u.getRaw() << std::endl;
+    } catch (std::exception) {
+      std::cout << "error: " << uri << std::endl;
+    }
 
-    Uri path("http://localhost.com/test/hello/world");
-    std::cout << path.getRaw() << std::endl;
+    uri = "http://localhost:878";
+    try {
+      Uri u(uri);
+      std::cout << "success: " << u.getRaw() << std::endl;
+    } catch (std::exception) {
+      std::cout << "error: " << uri << std::endl;
+    }
 
-    Uri query("http://localhost.com?tse=234&asdf=egadfa");
-    std::cout << query.getRaw() << std::endl;
+    uri = "http://localhost.com/test/hello/world";
+    try {
+      Uri u(uri);
+      std::cout << "success: " << u.getRaw() << std::endl;
+    } catch (std::exception) {
+      std::cout << "error: " << uri << std::endl;
+    }
 
-    Uri fragment("http://localhost.com#frag");
-    std::cout << fragment.getRaw() << std::endl;
+    uri = "http://localhost.com?ts";
+    try {
+      Uri u(uri);
+      std::cout << "success: " << u.getRaw() << std::endl;
+    } catch (std::exception) {
+      std::cout << "error: " << uri << std::endl;
+    }
 
-    Uri relative("/test/hello?query=1213");
-    std::cout << relative.getRaw() << std::endl;
+    uri = "http://localhost.com#frag";
+    try {
+      Uri u(uri);
+      std::cout << "success: " << u.getRaw() << std::endl;
+    } catch (std::exception) {
+      std::cout << "error: " << uri << std::endl;
+    }
+
+    uri = "//test";
+    try {
+      Uri u(uri);
+      std::cout << "success: " << u.getRaw() << std::endl;
+    } catch (std::exception) {
+      std::cout << "error: " << uri << std::endl;
+    }
+
+    uri = "/test/hello?query=1213";
+    try {
+      Uri u(uri);
+      std::cout << "success: " << u.getRaw() << std::endl;
+    } catch (std::exception) {
+      std::cout << "error: " << uri << std::endl;
+    }
+
+    uri = "/test//test//test////test";
+    try {
+      Uri u(uri);
+      std::cout << "success: " << u.getRaw() << std::endl;
+    } catch (std::exception) {
+      std::cout << "error: " << uri << std::endl;
+    }
+
+    uri = "askdlfj/test/hello";
+    try {
+      Uri u(uri);
+      std::cout << "success: " << u.getRaw() << std::endl;
+    } catch (std::exception) {
+      std::cout << "error: " << uri << std::endl;
+    }
+
+    uri = "?hello";
+    try {
+      Uri u(uri);
+      std::cout << "success: " << u.getRaw() << std::endl;
+    } catch (std::exception) {
+      std::cout << "error: " << uri << std::endl;
+    }
+
+    uri = "http:localhost";
+    try {
+      Uri u(uri);
+      std::cout << "success: " << u.getRaw() << std::endl;
+    } catch (std::exception) {
+      std::cout << "error: " << uri << std::endl;
+    }
+
+    uri = "http://user@/test";
+    try {
+      Uri u(uri);
+      std::cout << "success: " << u.getRaw() << std::endl;
+    } catch (std::exception) {
+      std::cout << "error: " << uri << std::endl;
+    }
+
+    uri = "ftp://test.com";
+    try {
+      Uri u(uri);
+      std::cout << "success: " << u.getRaw() << std::endl;
+    } catch (std::exception) {
+      std::cout << "error: " << uri << std::endl;
+    }
   }
 }
