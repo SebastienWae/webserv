@@ -32,7 +32,7 @@ public:
   /* to use for multiple ports => multithread */
   static void* launchHelper(void* current);
 
-  void run();
+  void* run();
 
   /* Listener functions */
   void createListenerSocket();
@@ -51,7 +51,7 @@ public:
 
   /* Client functions */
   static void* getAddress(struct sockaddr* sockaddress);
-  void getClientRequest();
+  void checkClientConnexion();
   class ClientGetRequestException : public ServerCoreNonFatalException {
   public:
     virtual char const* what() const throw();
@@ -61,9 +61,6 @@ public:
   public:
     virtual char const* what() const throw();
   };
-
-  /* TO DO : Setter and Getter to put these variables in private */
-  std::string port;
 
 private:
   /* Element containing all needed things to execute poll */

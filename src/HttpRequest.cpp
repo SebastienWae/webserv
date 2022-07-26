@@ -1,5 +1,6 @@
 #include "HttpRequest.h"
 
+#include <algorithm>
 #include <cctype>
 #include <cstddef>
 #include <exception>

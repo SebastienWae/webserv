@@ -166,3 +166,5 @@ void ServerConfig::trimserv(void) {
 const char *ServerConfig::IpException::what(void) const throw() { return ("Exception  : Bad IP"); }
 const char *ServerConfig::TrimservException::what(void) const throw() { return ("Exception  : Trimserv"); }
 const char *ServerConfig::PortException::what(void) const throw() { return ("Exception  : Bad Port"); }
+
+std::string ServerConfig::getPort() const { return (port.front()); }

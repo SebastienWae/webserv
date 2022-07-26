@@ -1,5 +1,6 @@
 #ifndef SERVERCONFIG_H
 #define SERVERCONFIG_H
+#include <cstring>
 #include <exception>
 #include <list>
 #include <vector>
@@ -33,6 +34,7 @@ public:
   public:
     virtual const char *what() const throw();
   };
+  std::string getPort() const;
 
 private:
   std::vector<std::string> listen;

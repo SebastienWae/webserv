@@ -19,7 +19,7 @@ PollElement PollElement::addToPollfds(int new_socket) {
       new_pollfd[i].revents = 0;
     }
     poll_fd_size *= 2;
-    delete (this->poll_fds);
+    delete[](this->poll_fds);
     poll_fds = new_pollfd;
   }
   poll_fds[active_fds].fd = new_socket;

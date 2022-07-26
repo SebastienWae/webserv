@@ -3,6 +3,7 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <string.h>
 #include <sys/fcntl.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -50,11 +51,19 @@ void Server::startListening() const {
 void Server::createListenerSocket() {
   int y = 1;
   memset((char*)&hints, 0, sizeof(hints));
-  hints.ai_family = AF_UNSPEC;
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_flags = AI_PASSIVE;
 
-  if (getaddrinfo(NULL, (this->port).c_str(), &hints, &address_info) != 0) {
+  hints.ai_socktype = SOCK_STREAM;
+
+#if defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
+  hints.ai_family = AF_INET;
+  hints.ai_flags = 0;
+#elif defined(__APPLE__) && defined(__MACH__)
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_flags = AI_PASSIVE;
+#endif
+  std::string port = "8080";  // TODO:replace with config port
+
+  if (getaddrinfo(NULL, port.c_str(), &hints, &address_info) != 0) {
     std::cerr << "Getaddrinfo error." << std ::endl;
     throw ListenerException();
   }
@@ -85,17 +94,16 @@ void Server::pollProcessInit() {
     throw PollException();
   }
   if (poll_elem.poll_ret == 0) {
-    std::cout << "Poll timed out" << std ::endl;
-    // close connection with client when timeout ?
+    // std::cout << "Poll timed out" << std ::endl;
+    //  close connection with client when timeout ?
   }
 }
 
 /* Called when data is ready to be received */
-void Server::getClientRequest() {
+void Server::checkClientConnexion() {
   address_len = sizeof(client_address);
   if ((new_socket = accept(listener, (struct sockaddr*)&client_address, (socklen_t*)&address_len)) < 0) {
     std::cerr << "Accept error" << std ::endl;
-    throw ClientGetRequestException();
   }
   poll_elem = poll_elem.addToPollfds(new_socket);
   std::cout << std::endl
@@ -120,22 +128,27 @@ void Server::sendingMessageBackToClient(int index, HttpResponse const& response)
     poll_elem = poll_elem.removeFromPollfds(index);
     throw ClientSendResponseException();
   }
-  std::cout << "Received from client : " << std ::endl << std::endl << buffer << std::endl;
+  buffer[ret_recv] = '\0';
+  std::cout << "\033[1;34mReceived from client : \033[0m" << std ::endl << std::endl << buffer << std::endl;
 
   std::string raw_response = response.getRaw();
 
-  send(poll_elem.poll_fds[index].fd, raw_response.c_str(), raw_response.length(), 0);
-  std::cout << std::endl << "*** Message sent to client ***" << std::endl;
+  std::cout << "\033[1;34mHttp response : \033[0m" << std::endl;
+  std::cout << raw_response;
+  // TODO : remove ok
+  send(poll_elem.poll_fds[index].fd, (raw_response + "ok").c_str(), (raw_response + "ok").length(), 0);
+  std::cout << "*** Message sent to client ***" << std::endl << std::endl;
 }
 
-void Server::run() {
+void* Server::run() {
   try {
     createListenerSocket();
     startListening();
     poll_elem.initPollElement(listener);
 
     std::cout << std::endl
-              << "-----------> READY TO START ON PORT " << port << " <-----------" << std::endl
+              //<< "-----------> READY TO START ON PORT " << config_.getPort() << " <-----------" << std::endl
+              << "-----------> READY TO START ON PORT 8080 <-----------" << std::endl
               << std::endl;
 
     while (true) {
@@ -145,13 +158,14 @@ void Server::run() {
         try {
           if ((poll_elem.poll_fds[i].revents & POLLIN) != 0) {
             if (poll_elem.poll_fds[i].fd == listener) {
-              getClientRequest();
+              checkClientConnexion();
             } else {
+              // TO DO : put the right resp depending on demand
               HttpResponse resp(HttpResponseSuccess::_200);
               sendingMessageBackToClient(i, resp);
               poll_elem.removeFromPollfds(i);
               close(new_socket);
-              std::cout << poll_elem << std::endl;
+              // std::cout << poll_elem << std::endl;
             }
           }
         } catch (ServerCoreNonFatalException& e) {
@@ -161,6 +175,8 @@ void Server::run() {
     }
     close(listener);
   } catch (ServerCoreFatalException& e) {
-    std::cerr << "FATAL ERROR - SERVER STOPPED LISTENING ON PORT " << port << std::endl;
+    std::cerr << "FATAL ERROR - SERVER STOPPED LISTENING ON PORT " << config_.getPort() << std::endl;
   }
+  return 0;
 }
+void* Server::launchHelper(void* current) { return ((Server*)current)->run(); };

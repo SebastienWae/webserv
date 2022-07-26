@@ -1,8 +1,9 @@
 #include "Config.h"
 
-#include <string.h>
-
-#include <__nullptr>
+#include <cstring>
+#if defined(__APPLE__) && defined(__MACH__)
+#  include <__nullptr>
+#endif
 #include <iterator>
 #include <vector>
 

@@ -1,5 +1,7 @@
 #include "Location.h"
 
+#include <cstring>
+
 Location::Location()
     : name("default"),
       allow("default"),

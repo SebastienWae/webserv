@@ -30,7 +30,7 @@ OBJS_DEBUG = $(addprefix $(DEBUG_DIR)/,$(SRCS_PATH:%.cpp=%.o))
 all: $(NAME)
 
 $(NAME): $(OBJS)
-	$(CXX) $(CXXFLAGS) $(OBJS) $(LDFLAGS) -o $(NAME)
+	$(CXX) $(CXXFLAGS) -pthread $(OBJS) $(LDFLAGS) -o $(NAME)
 
 $(OUT_DIR)/%.o: %.cpp
 	$(MKDIR) $(@D)
