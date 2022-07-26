@@ -6,4 +6,5 @@ Checks: >
   performance-*,
   readability-*,
   -readability-identifier-length,
+  -bugprone-easily-swappable-parameters,
 WarningsAsErrors: "*"
