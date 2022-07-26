@@ -26,6 +26,8 @@ private:
   enum parse_state {
     STATE_IDENTIFY,
     STATE_SCHEME,
+    STATE_HOST,
+    STATE_HOST_TYPE,
     STATE_USERINFO,
     STATE_HOSTNAME,
     STATE_IPV4ADDRESS,
