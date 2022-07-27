@@ -120,6 +120,7 @@ void Server::sendingMessageBackToClient(int index, HttpResponse const& response)
     poll_elem = poll_elem.removeFromPollfds(index);
     throw ClientSendResponseException();
   }
+  buffer[ret_recv] = '\0';
   std::cout << "Received from client : " << std ::endl << std::endl << buffer << std::endl;
 
   std::string raw_response = response.getRaw();
