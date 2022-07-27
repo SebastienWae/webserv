@@ -5,15 +5,12 @@
 
 #include <list>
 
-#include "HttpResponse.h"
 #include "ServerConfig.h"
 
 /*queue size of pending connections. if full => sends
 ECONNREFUSED or tries again to connect - depends on client */
 #define MAX_PENDING_CONNECTIONS 50   // TO SET
 #define BUFSIZE_CLIENT_REQUEST 1024  // TO SET
-
-#define TIMEOUT 5000
 
 /* to use for multiple ports => multithread */
 void* threadWrapper(void* current);
@@ -55,8 +52,6 @@ public:
   };
 
   ServerConfig const* getConfig() const;
-  /* TO DO : Setter and Getter to put these variables in private */
-  std::string port;
 
 private:
   /* Element containing all needed things to execute select */

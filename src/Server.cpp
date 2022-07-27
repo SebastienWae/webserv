@@ -95,8 +95,7 @@ void Server::getClientRequest() {
     std::cerr << "Accept error" << std ::endl;
     throw ClientGetRequestException();
   }
-  if (fcntl(new_socket, F_SETFL, O_NONBLOCK)
-      == -1) {  // seems to work / test with siege : useful ? here or when initializing socket?
+  if (fcntl(new_socket, F_SETFL, O_NONBLOCK) == -1) {
     std::cerr << "Cannot set new socket to non blocking." << std ::endl;
     throw ClientGetRequestException();
   }
@@ -118,11 +117,9 @@ void Server::sendingMessageBackToClient(int index) {
   long int ret_recv = recv(index, buffer, BUFSIZE_CLIENT_REQUEST, 0);
   if (ret_recv <= 0) {
     if (ret_recv == 0) {
-      std::cerr << std::endl << "Error: Connection closed by client" << std::endl;
-      // throw ClientSendResponseException();
+      std::cerr << std::endl << "Connection closed by client." << std::endl;
     } else if (ret_recv < 0) {
-      std::cerr << std::endl << "Error: No byte to read" << std::endl;
-      // throw ClientSendResponseException();
+      std::cerr << std::endl << "Error: No byte to read." << std::endl;
     }
     close(index);
     FD_CLR(index, &master);
