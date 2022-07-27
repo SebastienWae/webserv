@@ -14,7 +14,7 @@
 #include "HttpResponse.h"
 #include "HttpResponseStatus.h"
 
-Server::Server(ServerConfig const& config) : config_(config){};
+Server::Server(ServerConfig const* config) : config_(config){};
 
 Server::~Server() { delete[] poll_elem.poll_fds; };
 
@@ -54,7 +54,7 @@ void Server::createListenerSocket() {
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE;
 
-  if (getaddrinfo(NULL, (config_.getport()).c_str(), &hints, &address_info) != 0) {
+  if (getaddrinfo(NULL, (config_->getport()).c_str(), &hints, &address_info) != 0) {
     std::cerr << "Getaddrinfo error." << std ::endl;
     throw ListenerException();
   }
@@ -146,7 +146,8 @@ void* Server::run() {
             if (poll_elem.poll_fds[i].fd == listener) {
               getClientRequest();
             } else {
-              HttpResponse resp(HttpResponseSuccess::_200);
+              HttpResponse resp(HttpResponseSuccess::_200, "<html><body><h1>hello</h1></body></html>", "text/html",
+                                config_);
               sendingMessageBackToClient(i, resp);
               poll_elem.removeFromPollfds(i);
               close(new_socket);
@@ -160,13 +161,13 @@ void* Server::run() {
     }
     close(listener);
   } catch (ServerCoreFatalException& e) {
-    std::cerr << "FATAL ERROR - SERVER STOPPED LISTENING ON PORT " << config_.getport() << std::endl;
+    std::cerr << "FATAL ERROR - SERVER STOPPED LISTENING ON PORT " << config_->getport() << std::endl;
   }
   return NULL;
 }
 
-void* Server::launchHelper(void* current) { return ((Server*)current)->run(); };
+void* threadWrapper(void* current) { return (static_cast<Server*>(current))->run(); };
 
-ServerConfig Server::getConfig() const { return (config_); };
+ServerConfig const* Server::getConfig() const { return (config_); };
 // max body size : config_.getsize()
 // ip : config_.listen si diff de default sinon config_.server_name

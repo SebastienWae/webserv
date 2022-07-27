@@ -16,9 +16,11 @@ ECONNREFUSED or tries again to connect - depends on client */
 
 #define TIMEOUT 5000
 
+/* to use for multiple ports => multithread */
+void* threadWrapper(void* current);
 class Server {
 public:
-  Server(ServerConfig const& config);
+  Server(ServerConfig const* config);
   ~Server();
   class ServerCoreFatalException : public std::exception {
   public:
@@ -29,8 +31,6 @@ public:
   public:
     virtual char const* what() const throw();
   };
-  /* to use for multiple ports => multithread */
-  static void* launchHelper(void* current);
 
   void* run();
 
@@ -62,7 +62,7 @@ public:
     virtual char const* what() const throw();
   };
 
-  ServerConfig getConfig() const;
+  ServerConfig const* getConfig() const;
   /* TO DO : Setter and Getter to put these variables in private */
   std::string port;
 
@@ -81,7 +81,7 @@ private:
   sockaddr_storage client_address;
   socklen_t address_len;
   char remoteIP[INET6_ADDRSTRLEN];
-  ServerConfig const& config_;
+  ServerConfig const* config_;
 };
 
 #endif

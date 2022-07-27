@@ -55,7 +55,7 @@ public:
   void seeklocation(std::string const& str, int* countserv);
   void setlocation(std::string const& str, const int* countserv);
   void parse(void);
-  std::vector<ServerConfig> getServerConfig() const;
+  std::vector<ServerConfig> const* getServerConfig() const;
 
 private:
   std::vector<ServerConfig> servers;

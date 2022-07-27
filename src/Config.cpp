@@ -283,4 +283,4 @@ const char* Config::CommaException::what(void) const throw() { return ("Exceptio
 const char* Config::ArgException::what(void) const throw() { return ("Exception : Bad Arguments"); }
 const char* Config::BadException::what(void) const throw() { return ("Exception : Bad Argument name"); }
 const char* Config::ConfException::what(void) const throw() { return ("Exception  : Bad configuration"); }
-std::vector<ServerConfig> Config::getServerConfig() const { return servers; }
+std::vector<ServerConfig> const* Config::getServerConfig() const { return &servers; }

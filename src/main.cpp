@@ -21,18 +21,18 @@ int main(int argc, char** argv) {
     config.checkconfig(Config::checkextension(argc, argv));
     config.parse();
 
-    std::vector<ServerConfig> servers = config.getServerConfig();
+    std::vector<ServerConfig> const* servers = config.getServerConfig();
 
-    for (std::vector<ServerConfig>::const_iterator it = servers.begin(); it != servers.end(); ++it) {
-      Server* server = new Server(*it);
+    for (std::vector<ServerConfig>::const_iterator it = servers->begin(); it != servers->end(); ++it) {
+      Server* server = new Server(&(*it));
       std::cout << std::endl
-                << "-----------> LAUNCHING ON PORT " << server->getConfig().getport() << " <-----------" << std::endl
+                << "-----------> LAUNCHING ON PORT " << server->getConfig()->getport() << " <-----------" << std::endl
                 << std::endl;
 
       servers_list.push_front(*server);
       pthread_t th;
 
-      pthread_create(&th, NULL, &Server::launchHelper, server);
+      pthread_create(&th, NULL, &threadWrapper, server);
       threads.push_front(th);
     }
   } catch (std::exception& e) {
