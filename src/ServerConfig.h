@@ -28,15 +28,15 @@ public:
   void trimserv(void);
   void parserror(void);
   void splitauth(void);
-  std::string getlisten(void);
-  std::string getroot(void);
-  std::string getport(void);
-  std::string getserver_names(void);
-  std::map<enum HttpResponseClientError::code, std::string> getclienterror(void);
-  std::map<enum HttpResponseServerError::code, std::string> getservererror(void);
-  std::pair<std::string, std::string> getauthpair(void);
-  int getsize(void);
-  std::vector<Location> getlocation(void);
+  std::string getlisten(void) const;
+  std::string getroot(void) const;
+  std::string getport(void) const;
+  std::string getserver_names(void) const;
+  std::map<enum HttpResponseClientError::code, std::string> getclienterror(void) const;
+  std::map<enum HttpResponseServerError::code, std::string> getservererror(void) const;
+  std::pair<std::string, std::string> getauthpair(void) const;
+  int getsize(void) const;
+  std::vector<Location> getlocation(void) const;
 
   class IpException : public std::exception {
   public:

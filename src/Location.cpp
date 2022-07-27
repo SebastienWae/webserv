@@ -35,14 +35,14 @@ void Location::setupload_store(const std::string& tmp) { this->upload_store = tm
 void Location::setcgi_pass(const std::string& tmp) { this->cgi_pass = tmp; }
 void Location::setredirection(const std::string& tmp) { this->redirection = tmp; }
 
-std::string Location::getname(void) { return (this->name); }
-std::vector<enum Http::method> Location::getallowed(void) { return (this->allowed); }
-std::string Location::getdirectory_page(void) { return (this->directory_page); }
-bool Location::getdirectory_listing_bool(void) { return (this->directory_listing_bool); }
-std::string Location::getroot(void) { return (this->root); }
-std::string Location::getuploadstore(void) { return (this->upload_store); }
-std::string Location::getcgi_pass(void) { return (this->cgi_pass); }
-std::map<enum HttpResponseRedir::code, std::string> Location::getredir(void) { return (this->redir); }
+std::string Location::getname(void) const { return (this->name); }
+std::vector<enum Http::method> Location::getallowed(void) const { return (this->allowed); }
+std::string Location::getdirectory_page(void) const { return (this->directory_page); }
+bool Location::getdirectory_listing_bool(void) const { return (this->directory_listing_bool); }
+std::string Location::getroot(void) const { return (this->root); }
+std::string Location::getuploadstore(void) const { return (this->upload_store); }
+std::string Location::getcgi_pass(void) const { return (this->cgi_pass); }
+std::map<enum HttpResponseRedir::code, std::string> Location::getredir(void) const { return (this->redir); }
 
 void Location::parseloc(void) {
   if (this->name.compare(0, strlen("location "), "location ") == 0) {

@@ -46,26 +46,26 @@ void ServerConfig::setclient_max_body_size(const std::string &tmp) { this->clien
 
 void ServerConfig::setlocation(const Location &loc) { this->location.push_back(loc); }
 
-std::string ServerConfig::getlisten(void) { return (this->listen); }
+std::string ServerConfig::getlisten(void) const { return (this->listen); }
 
-std::string ServerConfig::getroot(void) { return (this->root); }
+std::string ServerConfig::getroot(void) const { return (this->root); }
 
-std::string ServerConfig::getport(void) { return (this->port); }
+std::string ServerConfig::getport(void) const { return (this->port); }
 
-std::string ServerConfig::getserver_names(void) { return (this->server_names); }
+std::string ServerConfig::getserver_names(void) const { return (this->server_names); }
 
-std::map<enum HttpResponseClientError::code, std::string> ServerConfig::getclienterror(void) {
+std::map<enum HttpResponseClientError::code, std::string> ServerConfig::getclienterror(void) const {
   return (this->clienterror);
 }
 
-std::map<enum HttpResponseServerError::code, std::string> ServerConfig::getservererror(void) {
+std::map<enum HttpResponseServerError::code, std::string> ServerConfig::getservererror(void) const {
   return (this->servererror);
 }
-std::pair<std::string, std::string> ServerConfig::getauthpair(void) { return (this->authpair); }
+std::pair<std::string, std::string> ServerConfig::getauthpair(void) const { return (this->authpair); }
 
-int ServerConfig::getsize(void) { return (this->max_size); }
+int ServerConfig::getsize(void) const { return (this->max_size); }
 
-std::vector<Location> ServerConfig::getlocation(void) { return (this->location); }
+std::vector<Location> ServerConfig::getlocation(void) const { return (this->location); }
 
 void ServerConfig::parseserv(void) {
   if (this->listen.compare(0, strlen("listen "), "listen ") == 0) {

@@ -27,14 +27,14 @@ public:
   void trimloc(void);
   void parseallow(void);
   void parseredir(void);
-  std::string getname(void);
-  std::vector<enum Http::method> getallowed(void);
-  std::string getdirectory_page(void);
-  bool getdirectory_listing_bool(void);
-  std::string getroot(void);
-  std::string getuploadstore(void);
-  std::string getcgi_pass(void);
-  std::map<enum HttpResponseRedir::code, std::string> getredir(void);
+  std::string getname(void) const;
+  std::vector<enum Http::method> getallowed(void) const;
+  std::string getdirectory_page(void) const;
+  bool getdirectory_listing_bool(void) const;
+  std::string getroot(void) const;
+  std::string getuploadstore(void) const;
+  std::string getcgi_pass(void) const;
+  std::map<enum HttpResponseRedir::code, std::string> getredir(void) const;
 
   class TrimException : public std::exception {
   public:
