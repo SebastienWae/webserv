@@ -176,6 +176,7 @@ void Config::setserver(std::string const& str, int* countserv) {
     for (size_t i = 0; i < str.size(); i++) {
       if (str.compare(i, strlen("location"), "location") == 0) {
         tmp = str.substr(0, i);
+        break;
       }
     }
   } else {
@@ -185,7 +186,7 @@ void Config::setserver(std::string const& str, int* countserv) {
   for (std::vector<std::string>::iterator it = ser.begin() + 1; it != ser.end(); ++it) {
     start = tmp.find(*it, found);
     if (start != std::string::npos) {
-      if (tmp.find(';', end) == std::string::npos) {
+      if (tmp.find(';', end + 1) == std::string::npos) {
         throw Config::CommaException();
       }
       for (size_t k = start; tmp[k] != ';'; k++) {
@@ -269,9 +270,9 @@ void Config::parse(void) {
     this->servers[j].parseserv();
     this->servers[j].checkip();
     this->servers[j].checkport();
-    this->servers[j].trimserv();
     this->servers[j].parserror();
     this->servers[j].splitauth();
+    this->servers[j].trimserv();
   }
 }
 
