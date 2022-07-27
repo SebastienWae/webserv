@@ -183,6 +183,7 @@ void ServerConfig::checkport(void) {
     }
   }
 }
+
 void ServerConfig::trimserv(void) {
   size_t found = std::string::npos;
   const std::string WHITESPACE = " \n\r\t\f\v";
@@ -190,15 +191,25 @@ void ServerConfig::trimserv(void) {
   if (found != std::string::npos) {
     throw ServerConfig::TrimservException();
   }
+  found = this->root.find_first_of(WHITESPACE);
+  if (found != std::string::npos) {
+    throw ServerConfig::TrimservException();
+  }
+  found = this->server_names.find_first_of(WHITESPACE);
+  if (found != std::string::npos) {
+    throw ServerConfig::TrimservException();
+  }
   found = this->auth.find_first_of(WHITESPACE);
   if (found != std::string::npos) {
     throw ServerConfig::TrimservException();
   }
+
   size_t n = this->client_max_body_size.length();
   char char_array[n + 1];
   strcpy(char_array, this->client_max_body_size.c_str());
   this->max_size = atoi(char_array);
 }
+
 void ServerConfig::parserror(void) {
   size_t found;
   std::string tmp;
