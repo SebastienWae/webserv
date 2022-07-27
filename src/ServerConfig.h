@@ -21,11 +21,13 @@ public:
   void setlocation(const Location &loc);
   void setroot(const std::string &tmp);
   void setport(const std::string &tmp);
+  void setauth(const std::string &tmp);
   void parseserv(void);
   void checkip(void);
   void checkport(void);
   void trimserv(void);
   void parserror(void);
+  void splitauth(void);
   class IpException : public std::exception {
   public:
     virtual const char *what() const throw();
@@ -49,6 +51,8 @@ private:
   std::map<enum HttpResponseClientError::code, std::string> clienterror;
   std::map<enum HttpResponseServerError::code, std::string> servererror;
   std::string client_max_body_size;
+  std::string auth;
+  std::pair<std::string, std::string> authpair;
   int max_size;
   std::vector<Location> location;
 };
