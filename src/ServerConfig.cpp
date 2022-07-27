@@ -8,6 +8,7 @@ ServerConfig::ServerConfig()
       server_names("default"),
       error_page("default"),
       client_max_body_size("default"),
+      auth("default"),
       max_size(0){};
 
 ServerConfig &ServerConfig::operator=(ServerConfig const &rhs) {
@@ -15,6 +16,8 @@ ServerConfig &ServerConfig::operator=(ServerConfig const &rhs) {
     this->listen = rhs.listen;
     this->root = rhs.root;
     this->port = rhs.port;
+    this->auth = rhs.auth;
+    this->authpair = rhs.authpair;
     this->server_names = rhs.server_names;
     this->error_page = rhs.error_page;
     this->client_max_body_size = rhs.client_max_body_size;
@@ -36,6 +39,8 @@ void ServerConfig::seterror_page(const std::string &tmp) { this->error_page = tm
 void ServerConfig::setroot(const std::string &tmp) { this->root = tmp; }
 
 void ServerConfig::setport(const std::string &tmp) { this->port = tmp; }
+
+void ServerConfig::setauth(const std::string &tmp) { this->auth = tmp; }
 
 void ServerConfig::setclient_max_body_size(const std::string &tmp) { this->client_max_body_size = tmp; }
 
@@ -60,6 +65,9 @@ void ServerConfig::parseserv(void) {
   }
   if (this->client_max_body_size.compare(0, strlen("client_max_body_size "), "client_max_body_size ") == 0) {
     this->client_max_body_size.erase(0, strlen("client_max_body_size "));
+  }
+  if (this->auth.compare(0, strlen("auth "), "auth ") == 0) {
+    this->auth.erase(0, strlen("auth "));
   }
   for (size_t i = 0; i < this->location.size(); i++) {
     this->location[i].parseloc();
@@ -161,6 +169,10 @@ void ServerConfig::trimserv(void) {
   if (found != std::string::npos) {
     throw ServerConfig::TrimservException();
   }
+  found = this->auth.find_first_of(WHITESPACE);
+  if (found != std::string::npos) {
+    throw ServerConfig::TrimservException();
+  }
   size_t n = this->client_max_body_size.length();
   char char_array[n + 1];
   strcpy(char_array, this->client_max_body_size.c_str());
@@ -191,6 +203,13 @@ void ServerConfig::parserror(void) {
     this->servererror.insert(p2);
   }
 }
+void ServerConfig::splitauth(void) {
+  size_t found;
+  found = this->auth.find_first_of(':', 0);
+  this->authpair.first = this->auth.substr(0, found);
+  this->authpair.second = this->auth.substr(found + 1, this->auth.size());
+}
+
 const char *ServerConfig::IpException::what(void) const throw() { return ("Exception  : Bad IP"); }
 const char *ServerConfig::TrimservException::what(void) const throw() { return ("Exception  : Trimserv"); }
 const char *ServerConfig::PortException::what(void) const throw() { return ("Exception  : Bad Port"); }

@@ -17,6 +17,7 @@ Config::Config() {
   ser.push_back("root");
   ser.push_back("error_page");
   ser.push_back("client_max_body_size");
+  ser.push_back("auth");
   loca.push_back("location");
   loca.push_back("name");
   loca.push_back("allow");
@@ -160,9 +161,10 @@ void Config::setserver(std::string const& str, int* countserv) {
   size_t start = 0;
   size_t end = 0;
 
-  void (ServerConfig::*setserv[6])(const std::string& tmp)
+  void (ServerConfig::*setserv[7])(const std::string& tmp)
       = {&ServerConfig::setlisten, &ServerConfig::setserver_names, &ServerConfig::setport,
-         &ServerConfig::setroot,   &ServerConfig::seterror_page,   &ServerConfig::setclient_max_body_size};
+         &ServerConfig::setroot,   &ServerConfig::seterror_page,   &ServerConfig::setclient_max_body_size,
+         &ServerConfig::setauth};
   if (str.find("server_name", found) == std::string::npos && str.find("listen", found) == std::string::npos) {
     *countserv = 0;
   } else {
@@ -183,7 +185,7 @@ void Config::setserver(std::string const& str, int* countserv) {
   for (std::vector<std::string>::iterator it = ser.begin() + 1; it != ser.end(); ++it) {
     start = tmp.find(*it, found);
     if (start != std::string::npos) {
-      if (tmp.find(';', 0) == std::string::npos) {
+      if (tmp.find(';', end) == std::string::npos) {
         throw Config::CommaException();
       }
       for (size_t k = start; tmp[k] != ';'; k++) {
@@ -269,6 +271,7 @@ void Config::parse(void) {
     this->servers[j].checkport();
     this->servers[j].trimserv();
     this->servers[j].parserror();
+    this->servers[j].splitauth();
   }
 }
 
