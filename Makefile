@@ -8,7 +8,7 @@ OUT_DIR = out
 DEBUG_DIR = debug
 
 CXX = clang++
-WARNING = -Wall -Wextra -Werror
+WARNING = -Wall -Wextra -Werror 
 CXXFLAGS = -O0
 
 SRCS = main.cpp \
@@ -30,7 +30,7 @@ OBJS_DEBUG = $(addprefix $(DEBUG_DIR)/,$(SRCS_PATH:%.cpp=%.o))
 all: $(NAME)
 
 $(NAME): $(OBJS)
-	$(CXX) $(CXXFLAGS) $(OBJS) $(LDFLAGS) -o $(NAME)
+	$(CXX) $(CXXFLAGS) -pthread $(OBJS) $(LDFLAGS) -o $(NAME)
 
 $(OUT_DIR)/%.o: %.cpp
 	$(MKDIR) $(@D)

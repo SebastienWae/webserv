@@ -54,7 +54,7 @@ void Server::createListenerSocket() {
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE;
 
-  if (getaddrinfo(NULL, (this->port).c_str(), &hints, &address_info) != 0) {
+  if (getaddrinfo(NULL, (config_.getport()).c_str(), &hints, &address_info) != 0) {
     std::cerr << "Getaddrinfo error." << std ::endl;
     throw ListenerException();
   }
@@ -79,13 +79,12 @@ void Server::createListenerSocket() {
 
 void Server::pollProcessInit() {
   poll_elem.poll_ret = poll(&poll_elem.poll_fds[0], poll_elem.active_fds, TIMEOUT);
-  // 5000 :  timeout / pas de timeout => set a -1
   if (poll_elem.poll_ret == -1) {
     std::cerr << "Poll error." << std ::endl;
     throw PollException();
   }
   if (poll_elem.poll_ret == 0) {
-    std::cout << "Poll timed out" << std ::endl;
+    // std::cout << "Poll timed out" << std ::endl;
     // close connection with client when timeout ?
   }
 }
@@ -121,27 +120,26 @@ void Server::sendingMessageBackToClient(int index, HttpResponse const& response)
     throw ClientSendResponseException();
   }
   buffer[ret_recv] = '\0';
+
   std::cout << "Received from client : " << std ::endl << std::endl << buffer << std::endl;
-
   std::string raw_response = response.getRaw();
-
-  send(poll_elem.poll_fds[index].fd, raw_response.c_str(), raw_response.length(), 0);
+  std::cout << "Response sent to client : " << raw_response << std::endl << std::endl;
+  send(poll_elem.poll_fds[index].fd, (raw_response + "ok").c_str(), raw_response.length() + 2, 0);
   std::cout << std::endl << "*** Message sent to client ***" << std::endl;
 }
 
-void Server::run() {
+void* Server::run() {
   try {
     createListenerSocket();
     startListening();
     poll_elem.initPollElement(listener);
 
-    std::cout << std::endl
-              << "-----------> READY TO START ON PORT " << port << " <-----------" << std::endl
-              << std::endl;
+    // std::cout << std::endl
+    //           << "-----------> READY TO START ON PORT " << config_.getport() << " <-----------" << std::endl
+    //           << std::endl;
 
     while (true) {
       pollProcessInit();
-
       for (int i = 0; i < poll_elem.poll_fd_size; i++) {
         try {
           if ((poll_elem.poll_fds[i].revents & POLLIN) != 0) {
@@ -152,7 +150,7 @@ void Server::run() {
               sendingMessageBackToClient(i, resp);
               poll_elem.removeFromPollfds(i);
               close(new_socket);
-              std::cout << poll_elem << std::endl;
+              // std::cout << poll_elem << std::endl;
             }
           }
         } catch (ServerCoreNonFatalException& e) {
@@ -162,6 +160,13 @@ void Server::run() {
     }
     close(listener);
   } catch (ServerCoreFatalException& e) {
-    std::cerr << "FATAL ERROR - SERVER STOPPED LISTENING ON PORT " << port << std::endl;
+    std::cerr << "FATAL ERROR - SERVER STOPPED LISTENING ON PORT " << config_.getport() << std::endl;
   }
+  return NULL;
 }
+
+void* Server::launchHelper(void* current) { return ((Server*)current)->run(); };
+
+ServerConfig Server::getConfig() const { return (config_); };
+// max body size : config_.getsize()
+// ip : config_.listen si diff de default sinon config_.server_name

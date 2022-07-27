@@ -32,7 +32,7 @@ public:
   /* to use for multiple ports => multithread */
   static void* launchHelper(void* current);
 
-  void run();
+  void* run();
 
   /* Listener functions */
   void createListenerSocket();
@@ -62,6 +62,7 @@ public:
     virtual char const* what() const throw();
   };
 
+  ServerConfig getConfig() const;
   /* TO DO : Setter and Getter to put these variables in private */
   std::string port;
 
