@@ -12,6 +12,10 @@
 #include "Http.h"
 #include "Utils.h"
 
+#if defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
+#  include <algorithm>
+#endif
+
 HttpRequest::MethodMap initMethodMap() {
   HttpRequest::MethodMap map;
   map.insert(std::pair<std::string, enum Http::method>("GET", Http::GET));

@@ -5,6 +5,9 @@
 #include <iostream>
 #include <map>
 #include <vector>
+#if defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
+#  include <string.h>
+#endif
 
 #include "Http.h"
 #include "HttpResponseStatus.h"

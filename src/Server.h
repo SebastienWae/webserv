@@ -6,7 +6,6 @@
 #include <list>
 
 #include "HttpResponse.h"
-#include "PollElement.h"
 #include "ServerConfig.h"
 
 /*queue size of pending connections. if full => sends
@@ -36,15 +35,8 @@ public:
 
   /* Listener functions */
   void createListenerSocket();
-  void startListening() const;
+  void startListening();
   class ListenerException : public ServerCoreFatalException {
-  public:
-    virtual char const* what() const throw();
-  };
-
-  /* Poll functions */
-  void pollProcessInit();
-  class PollException : public ServerCoreNonFatalException {
   public:
     virtual char const* what() const throw();
   };
@@ -56,7 +48,7 @@ public:
   public:
     virtual char const* what() const throw();
   };
-  void sendingMessageBackToClient(int index, HttpResponse const& response);
+  void sendingMessageBackToClient(int index);
   class ClientSendResponseException : public ServerCoreNonFatalException {
   public:
     virtual char const* what() const throw();
@@ -67,8 +59,10 @@ public:
   std::string port;
 
 private:
-  /* Element containing all needed things to execute poll */
-  PollElement poll_elem;
+  /* Element containing all needed things to execute select */
+  fd_set master;
+  fd_set read_fds;
+  int fd_max;
 
   /* Listener variables */
   int listener;

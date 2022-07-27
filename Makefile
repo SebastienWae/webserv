@@ -13,7 +13,6 @@ CXXFLAGS = -O0
 
 SRCS = main.cpp \
 	Server.cpp \
-	PollElement.cpp \
 	Config.cpp \
 	Location.cpp \
 	ServerConfig.cpp \
