@@ -47,6 +47,10 @@ public:
   public:
     virtual const char* what() const throw();
   };
+  class ConfException : public std::exception {
+  public:
+    virtual const char* what() const throw();
+  };
   void setserver(std::string const& str, int* countserv);
   void seeklocation(std::string const& str, int* countserv);
   void setlocation(std::string const& str, const int* countserv);

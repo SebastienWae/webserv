@@ -2,8 +2,10 @@
 
 Location::Location()
     : name("default"),
-      allow("default"),
-      index("default"),
+      allow("GET POST DELETE"),
+      directory_page("default"),
+      directory_listing("default"),
+      directory_listing_bool(false),
       root("default"),
       upload_store("default"),
       cgi_pass("default"),
@@ -12,7 +14,9 @@ Location& Location::operator=(Location const& rhs) {
   if (this != &rhs) {
     this->name = rhs.name;
     this->allow = rhs.allow;
-    this->index = rhs.index;
+    this->directory_page = rhs.directory_page;
+    this->directory_listing = rhs.directory_listing;
+    this->directory_listing_bool = rhs.directory_listing_bool;
     this->root = rhs.root;
     this->upload_store = rhs.upload_store;
     this->cgi_pass = rhs.cgi_pass;
@@ -24,7 +28,8 @@ Location::Location(Location const& src) { *this = src; }
 Location::~Location(){};
 void Location::setname(const std::string& tmp) { this->name = tmp; }
 void Location::setallow(const std::string& tmp) { this->allow = tmp; }
-void Location::setindex(const std::string& tmp) { this->index = tmp; }
+void Location::setdirectory_page(const std::string& tmp) { this->directory_page = tmp; }
+void Location::setdirectory_listing(const std::string& tmp) { this->directory_listing = tmp; }
 void Location::setroot(const std::string& tmp) { this->root = tmp; }
 void Location::setupload_store(const std::string& tmp) { this->upload_store = tmp; }
 void Location::setcgi_pass(const std::string& tmp) { this->cgi_pass = tmp; }
@@ -37,8 +42,14 @@ void Location::parseloc(void) {
   if (this->allow.compare(0, strlen("allow "), "allow ") == 0) {
     this->allow.erase(0, strlen("allow "));
   }
-  if (this->index.compare(0, strlen("index "), "index ") == 0) {
-    this->index.erase(0, strlen("index "));
+  if (this->directory_page.compare(0, strlen("directory_page "), "directory_page ") == 0) {
+    this->directory_page.erase(0, strlen("directory_page "));
+  }
+  if (this->directory_listing.compare(0, strlen("directory_listing "), "directory_listing ") == 0) {
+    this->directory_listing.erase(0, strlen("directory_listing "));
+  }
+  if ((this->directory_listing.compare(0, strlen("on"), "on")) == 0) {
+    this->directory_listing_bool = true;
   }
   if (this->root.compare(0, strlen("root "), "root ") == 0) {
     this->root.erase(0, strlen("root "));
@@ -80,6 +91,26 @@ void Location::trimloc(void) {
   // found = this->redirection.find_first_of(WHITESPACE);
   if (found != std::string::npos) {
     throw Location::TrimException();
+  }
+}
+void Location::parseredir(void) {
+  size_t found;
+  std::string tmp;
+  std::string tmp2;
+  size_t size;
+  found = this->redirection.find_first_of(' ', 0);
+  tmp = this->redirection.substr(0, found);
+  tmp2 = this->redirection.substr(found + 1, this->redirection.size());
+  // conversion into int
+  std::pair<enum HttpResponseRedir::code, std::string> p1;
+  size_t n = tmp.length();
+  char char_array[n + 1];
+  strcpy(char_array, tmp.c_str());
+  size = atoi(char_array);
+  if ((size - 308) > 0 && (size - 300) < (308 - 300)) {
+    p1.first = static_cast<enum HttpResponseRedir::code>(size - 300);
+    p1.second = tmp2;
+    this->redir.insert(p1);
   }
 }
 const char* Location::TrimException::what(void) const throw() { return ("Exception  : Trim error"); }

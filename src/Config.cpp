@@ -13,12 +13,15 @@ Config::Config() {
   ser.push_back("server");
   ser.push_back("listen");
   ser.push_back("server_name");
+  ser.push_back("port");
+  ser.push_back("root");
   ser.push_back("error_page");
   ser.push_back("client_max_body_size");
   loca.push_back("location");
   loca.push_back("name");
   loca.push_back("allow");
-  loca.push_back("index");
+  loca.push_back("directory_page");
+  loca.push_back("directory_listing");
   loca.push_back("root");
   loca.push_back("upload_store");
   loca.push_back("cgi_pass");
@@ -117,8 +120,11 @@ void Config::checkconfig(const std::string& files) {
   std::string tmp;
   int countserv = -1;
   str = openfile(files);
-  if (str.find("server_name", 0) == std::string::npos) {
+  if (str.find("server_name ", 0) == std::string::npos && str.find("listen ", 0) == std::string::npos) {
     throw Config::NameException();
+  }
+  if (str.find("server_name ", 0) != std::string::npos && str.find("listen ", 0) != std::string::npos) {
+    throw Config::ConfException();
   }
   checkbracket(str);
   for (size_t i = 0; i < str.size(); i++) {
@@ -154,11 +160,10 @@ void Config::setserver(std::string const& str, int* countserv) {
   size_t start = 0;
   size_t end = 0;
 
-  void (ServerConfig::*setserv[4])(const std::string& tmp)
-      = {&ServerConfig::setlisten, &ServerConfig::setserver_names, &ServerConfig::seterror_page,
-         &ServerConfig::setclient_max_body_size};
-  start = str.find("server_name", found);
-  if (start == std::string::npos) {
+  void (ServerConfig::*setserv[6])(const std::string& tmp)
+      = {&ServerConfig::setlisten, &ServerConfig::setserver_names, &ServerConfig::setport,
+         &ServerConfig::setroot,   &ServerConfig::seterror_page,   &ServerConfig::setclient_max_body_size};
+  if (str.find("server_name", found) == std::string::npos && str.find("listen", found) == std::string::npos) {
     *countserv = 0;
   } else {
     ServerConfig* sev = new ServerConfig;
@@ -226,7 +231,8 @@ void Config::setlocation(std::string const& str, const int* countserv) {
   std::vector<void (Location::*)(const std::string& tmp)> setLoc;
   setLoc.push_back(&Location::setname);
   setLoc.push_back(&Location::setallow);
-  setLoc.push_back(&Location::setindex);
+  setLoc.push_back(&Location::setdirectory_page);
+  setLoc.push_back(&Location::setdirectory_listing);
   setLoc.push_back(&Location::setroot);
   setLoc.push_back(&Location::setupload_store);
   setLoc.push_back(&Location::setcgi_pass);
@@ -262,6 +268,7 @@ void Config::parse(void) {
     this->servers[j].checkip();
     this->servers[j].checkport();
     this->servers[j].trimserv();
+    this->servers[j].parserror();
   }
 }
 
@@ -271,5 +278,5 @@ const char* Config::NameException::what(void) const throw() { return ("Exception
 const char* Config::CommaException::what(void) const throw() { return ("Exception : Comma"); }
 const char* Config::ArgException::what(void) const throw() { return ("Exception : Bad Arguments"); }
 const char* Config::BadException::what(void) const throw() { return ("Exception : Bad Argument name"); }
-
+const char* Config::ConfException::what(void) const throw() { return ("Exception  : Bad configuration"); }
 std::vector<ServerConfig> Config::getServerConfig() const { return servers; }

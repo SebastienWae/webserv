@@ -10,11 +10,11 @@ int main(int argc, char **argv) {
   try {
     config.checkconfig(Config::checkextension(argc, argv));
     config.parse();
-    std::vector<ServerConfig> servers = config.getServerConfig();
-    for (std::vector<ServerConfig>::const_iterator it = servers.begin(); it != servers.end(); ++it) {
-      Server server(*it);
-      server.run();
-    }
+    // std::vector<ServerConfig> servers = config.getServerConfig();
+    // for (std::vector<ServerConfig>::const_iterator it = servers.begin(); it != servers.end(); ++it) {
+    //   Server server(*it);
+    //   server.run();
+    // }
   } catch (std::exception &e) {
     std::cerr << e.what() << std::endl;
   }

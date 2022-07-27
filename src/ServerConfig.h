@@ -2,8 +2,10 @@
 #define SERVERCONFIG_H
 #include <exception>
 #include <list>
+#include <map>
 #include <vector>
 
+#include "HttpResponseStatus.h"
 #include "Location.h"
 
 class ServerConfig {
@@ -17,14 +19,18 @@ public:
   void seterror_page(const std::string &tmp);
   void setclient_max_body_size(const std::string &tmp);
   void setlocation(const Location &loc);
+  void setroot(const std::string &tmp);
+  void setport(const std::string &tmp);
   void parseserv(void);
   void checkip(void);
   void checkport(void);
   void trimserv(void);
+  void parserror(void);
   class IpException : public std::exception {
   public:
     virtual const char *what() const throw();
   };
+
   class PortException : public std::exception {
   public:
     virtual const char *what() const throw();
@@ -35,13 +41,15 @@ public:
   };
 
 private:
-  std::vector<std::string> listen;
-  std::vector<std::string> ip;
-  std::vector<std::string> port;
-  std::string host;
+  std::string listen;
+  std::string root;
+  std::string port;
   std::string server_names;
   std::string error_page;
+  std::map<enum HttpResponseClientError::code, std::string> clienterror;
+  std::map<enum HttpResponseServerError::code, std::string> servererror;
   std::string client_max_body_size;
+  int max_size;
   std::vector<Location> location;
 };
 #endif
