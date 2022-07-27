@@ -46,6 +46,27 @@ void ServerConfig::setclient_max_body_size(const std::string &tmp) { this->clien
 
 void ServerConfig::setlocation(const Location &loc) { this->location.push_back(loc); }
 
+std::string ServerConfig::getlisten(void) { return (this->listen); }
+
+std::string ServerConfig::getroot(void) { return (this->root); }
+
+std::string ServerConfig::getport(void) { return (this->port); }
+
+std::string ServerConfig::getserver_names(void) { return (this->server_names); }
+
+std::map<enum HttpResponseClientError::code, std::string> ServerConfig::getclienterror(void) {
+  return (this->clienterror);
+}
+
+std::map<enum HttpResponseServerError::code, std::string> ServerConfig::getservererror(void) {
+  return (this->servererror);
+}
+std::pair<std::string, std::string> ServerConfig::getauthpair(void) { return (this->authpair); }
+
+int ServerConfig::getsize(void) { return (this->max_size); }
+
+std::vector<Location> ServerConfig::getlocation(void) { return (this->location); }
+
 void ServerConfig::parseserv(void) {
   if (this->listen.compare(0, strlen("listen "), "listen ") == 0) {
     this->listen.erase(0, strlen("listen "));

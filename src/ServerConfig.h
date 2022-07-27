@@ -28,6 +28,16 @@ public:
   void trimserv(void);
   void parserror(void);
   void splitauth(void);
+  std::string getlisten(void);
+  std::string getroot(void);
+  std::string getport(void);
+  std::string getserver_names(void);
+  std::map<enum HttpResponseClientError::code, std::string> getclienterror(void);
+  std::map<enum HttpResponseServerError::code, std::string> getservererror(void);
+  std::pair<std::string, std::string> getauthpair(void);
+  int getsize(void);
+  std::vector<Location> getlocation(void);
+
   class IpException : public std::exception {
   public:
     virtual const char *what() const throw();
