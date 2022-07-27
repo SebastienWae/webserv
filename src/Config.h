@@ -61,7 +61,6 @@ private:
   std::vector<ServerConfig> servers;
   std::vector<std::string> ser;
   std::vector<std::string> loca;
-  std::map<HttpResponseClientError::code, std::string> client_error_pages;
 };
 
 #endif
