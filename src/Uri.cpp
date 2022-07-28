@@ -7,6 +7,8 @@
 #include <stdexcept>
 #include <string>
 
+Uri::Uri() : type_(TYPE_NONE) {}
+
 // NOLINTNEXTLINE
 Uri::Uri(std::string const& uri) throw(Uri::UriParsingException) : type_(Uri::TYPE_NONE) {
   if (uri.empty()) {
@@ -229,6 +231,8 @@ std::string Uri::getHost() const { return host_; }
 std::string Uri::getPort() const { return port_; }
 
 std::string Uri::getQuery() const { return query_; }
+
+std::string Uri::getPath() const { return path_; }
 
 std::string Uri::getRaw() const {
   return (scheme_.empty() ? "" : scheme_ + "://") + (userinfo_.empty() ? "" : userinfo_ + "@") + host_

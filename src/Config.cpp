@@ -232,7 +232,7 @@ void Config::setlocation(std::string const& str, const int* countserv) {
   bool flag = false;
 
   std::vector<void (Location::*)(const std::string& tmp)> setLoc;
-  setLoc.push_back(&Location::setname);
+  setLoc.push_back(&Location::seturi);
   setLoc.push_back(&Location::setallow);
   setLoc.push_back(&Location::setdirectory_page);
   setLoc.push_back(&Location::setdirectory_listing);

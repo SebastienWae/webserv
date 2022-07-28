@@ -8,14 +8,13 @@
 
 #include "Http.h"
 #include "HttpResponseStatus.h"
+#include "Uri.h"
 
 class Location {
 public:
   Location();
-  Location &operator=(Location const &rhs);
-  Location(Location const &src);
   ~Location();
-  void setname(const std::string &tmp);
+  void seturi(const std::string &tmp);
   void setallow(const std::string &tmp);
   void setdirectory_page(const std::string &tmp);
   void setdirectory_listing(const std::string &tmp);
@@ -27,7 +26,7 @@ public:
   void trimloc(void);
   void parseallow(void);
   void parseredir(void);
-  std::string getname(void) const;
+  Uri geturi(void) const;
   std::vector<enum Http::method> getallowed(void) const;
   std::string getdirectory_page(void) const;
   bool getdirectory_listing_bool(void) const;
@@ -42,7 +41,7 @@ public:
   };
 
 private:
-  std::string name;
+  Uri uri;
   std::string allow;
   std::vector<enum Http::method> allowed;
   std::string directory_page;

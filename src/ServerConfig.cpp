@@ -1,6 +1,7 @@
 #include "ServerConfig.h"
 
 #include <utility>
+#include <vector>
 ServerConfig::ServerConfig()
     : listen("default"),
       root("default"),
@@ -240,6 +241,15 @@ void ServerConfig::splitauth(void) {
   found = this->auth.find_first_of(':', 0);
   this->authpair.first = this->auth.substr(0, found);
   this->authpair.second = this->auth.substr(found + 1, this->auth.size());
+}
+
+Location const *ServerConfig::matchLocation(Uri const &uri) {
+  for (std::vector<Location>::iterator it = location.begin(); it != location.end(); ++it) {
+    if (uri.getPath() == it->geturi().getPath()) {
+      return &(*it);
+    }
+  }
+  return NULL;
 }
 
 const char *ServerConfig::IpException::what(void) const throw() { return ("Exception  : Bad IP"); }
