@@ -12,6 +12,7 @@ public:
 
   class UriParsingException : public std::exception {};
 
+  Uri();
   Uri(std::string const& uri) throw(UriParsingException);
 
   enum type getType() const;
@@ -21,6 +22,7 @@ public:
   std::string getPort() const;
   std::string getQuery() const;
   std::string getRaw() const;
+  std::string getPath() const;
 
 private:
   enum parse_state {

@@ -1,8 +1,11 @@
 #include "Location.h"
 
+#include <exception>
+
+#include "Uri.h"
+
 Location::Location()
-    : name("default"),
-      allow("GET POST DELETE"),
+    : allow("GET POST DELETE"),
       directory_page("default"),
       directory_listing("default"),
       directory_listing_bool(false),
@@ -10,23 +13,20 @@ Location::Location()
       upload_store("default"),
       cgi_pass("default"),
       redirection("default"){};
-Location& Location::operator=(Location const& rhs) {
-  if (this != &rhs) {
-    this->name = rhs.name;
-    this->allow = rhs.allow;
-    this->directory_page = rhs.directory_page;
-    this->directory_listing = rhs.directory_listing;
-    this->directory_listing_bool = rhs.directory_listing_bool;
-    this->root = rhs.root;
-    this->upload_store = rhs.upload_store;
-    this->cgi_pass = rhs.cgi_pass;
-    this->redirection = rhs.redirection;
-  }
-  return (*this);
-}
-Location::Location(Location const& src) { *this = src; }
+
 Location::~Location(){};
-void Location::setname(const std::string& tmp) { this->name = tmp; }
+void Location::seturi(const std::string& tmp) {
+  std::string tmp2 = tmp;
+  if (tmp2.compare(0, strlen("location "), "location ") == 0) {
+    tmp2.erase(0, strlen("location "));
+  }
+  Uri uri_(tmp2);
+  if (uri_.getType() == Uri::TYPE_RELATIVE && uri_.getUserInfo().empty() && uri_.getQuery().empty()) {
+    uri = uri_;
+  } else {
+    throw std::exception();
+  }
+}
 void Location::setallow(const std::string& tmp) { this->allow = tmp; }
 void Location::setdirectory_page(const std::string& tmp) { this->directory_page = tmp; }
 void Location::setdirectory_listing(const std::string& tmp) { this->directory_listing = tmp; }
@@ -35,7 +35,7 @@ void Location::setupload_store(const std::string& tmp) { this->upload_store = tm
 void Location::setcgi_pass(const std::string& tmp) { this->cgi_pass = tmp; }
 void Location::setredirection(const std::string& tmp) { this->redirection = tmp; }
 
-std::string Location::getname(void) const { return (this->name); }
+Uri Location::geturi(void) const { return (this->uri); }
 std::vector<enum Http::method> Location::getallowed(void) const { return (this->allowed); }
 std::string Location::getdirectory_page(void) const { return (this->directory_page); }
 bool Location::getdirectory_listing_bool(void) const { return (this->directory_listing_bool); }
@@ -45,10 +45,6 @@ std::string Location::getcgi_pass(void) const { return (this->cgi_pass); }
 std::map<enum HttpResponseRedir::code, std::string> Location::getredir(void) const { return (this->redir); }
 
 void Location::parseloc(void) {
-  if (this->name.compare(0, strlen("location "), "location ") == 0) {
-    this->name.erase(0, strlen("location "));
-  }
-
   if (this->allow.compare(0, strlen("allow "), "allow ") == 0) {
     this->allow.erase(0, strlen("allow "));
   }
@@ -89,10 +85,10 @@ void Location::parseallow(void) {
 void Location::trimloc(void) {
   size_t found = std::string::npos;
   const std::string WHITESPACE = " \n\r\t\f\v";
-  found = this->name.find_first_of(WHITESPACE);
-  if (found != std::string::npos) {
-    throw Location::TrimException();
-  }
+  // found = this->name.find_first_of(WHITESPACE);
+  // if (found != std::string::npos) {
+  //   throw Location::TrimException();
+  // }
   // found = this->allow.find_first_of(WHITESPACE);
   // found = this->index.find_first_of(WHITESPACE);
   found = this->root.find_first_of(WHITESPACE);

@@ -7,6 +7,7 @@
 
 #include "HttpResponseStatus.h"
 #include "Location.h"
+#include "Uri.h"
 
 class ServerConfig {
 public:
@@ -37,6 +38,8 @@ public:
   std::pair<std::string, std::string> getauthpair(void) const;
   int getsize(void) const;
   std::vector<Location> getlocation(void) const;
+
+  Location const *matchLocation(Uri const &uri);
 
   class IpException : public std::exception {
   public:
