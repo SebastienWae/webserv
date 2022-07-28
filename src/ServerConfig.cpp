@@ -225,11 +225,11 @@ void ServerConfig::parserror(void) {
   char char_array[n + 1];
   strcpy(char_array, tmp.c_str());
   size = atoi(char_array);
-  if ((size - 400) > 0 && (size - 400) < (418 - 400)) {
+  if ((size - 400) >= 0 && (size - 400) < (418 - 400)) {
     p1.first = static_cast<HttpResponseClientError::code>(size - 400);
     p1.second = tmp2;
     this->clienterror.insert(p1);
-  } else if ((size - 500) > 0 && (size - 500) < (506 - 500)) {
+  } else if ((size - 500) >= 0 && (size - 500) < (506 - 500)) {
     p2.first = static_cast<enum HttpResponseServerError::code>(size - 500);
     p2.second = tmp2;
     this->servererror.insert(p2);
