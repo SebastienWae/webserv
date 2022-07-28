@@ -22,7 +22,10 @@ SRCS = main.cpp \
 	HttpResponse.cpp \
 	HttpResponseStatus.cpp \
 	Uri.cpp \
+<<<<<<< HEAD
 	File.cpp \
+=======
+>>>>>>>  Directory html
 	Directory.cpp
 SRCS_PATH = $(addprefix $(SRC_DIR)/,$(SRCS))
 SRCS_PATH_BONUS = $(addprefix $(SRC_DIR)/,$(SRCS_BONUS))
