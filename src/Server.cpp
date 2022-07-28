@@ -16,7 +16,7 @@
 
 Server::Server(ServerConfig const* config) : config_(config){};
 
-Server::~Server() { delete[] poll_elem.poll_fds; };
+Server::~Server(){};
 
 char const* Server::ServerCoreFatalException::what() const throw() { return "Server core fatal error."; }
 char const* Server::ServerCoreNonFatalException::what() const throw() { return "Server error."; }
@@ -34,8 +34,6 @@ void* Server::getAddress(struct sockaddr* sockaddress) {
   return &(((struct sockaddr_in6*)sockaddress)->sin6_addr);
 }
 
-// If try to read from non-blocking socket without data => not allowed to
-// block—it => return -1 + errno set to EAGAIN or EWOULDBLOCK
 void Server::startListening() const {
   if (listen(listener, MAX_PENDING_CONNECTIONS) < 0) {
     std::cerr << "Listen failed" << std ::endl;
@@ -77,29 +75,20 @@ void Server::createListenerSocket() {
   }
 };
 
-void Server::pollProcessInit() {
-  poll_elem.poll_ret = poll(&poll_elem.poll_fds[0], poll_elem.active_fds, TIMEOUT);
-  if (poll_elem.poll_ret == -1) {
-    std::cerr << "Poll error." << std ::endl;
-    throw PollException();
-  }
-  if (poll_elem.poll_ret == 0) {
-    std::cout << "Poll timed out" << std ::endl;
-  }
-}
-
-/* Called when data is ready to be received */
-void Server::getClientRequest() {
+void Server::getClientRequest(int event_fd) {
   address_len = sizeof(client_address);
-
-  if ((new_socket = accept(listener, (struct sockaddr*)&client_address, (socklen_t*)&address_len)) < 0) {
-    std::cerr << "Accept error" << std ::endl;
-    std::cout << strerror(errno) << std::endl;
+  new_socket = accept(event_fd, (struct sockaddr*)&client_address, (socklen_t*)&address_len);
+  if (new_socket == -1) {
+    perror("Accept socket error");
   }
   if (fcntl(new_socket, F_SETFL, O_NONBLOCK) == -1) {
-    std::cerr << "Cannot set newfd to non blocking." << std ::endl;
+    std::cerr << "Cannot set new socket to non blocking." << std ::endl;
+    throw ListenerException();
   }
-  poll_elem = poll_elem.addToPollfds(new_socket);
+  EV_SET(change_event, new_socket, EVFILT_READ, EV_ADD, 0, 0, NULL);
+  if (kevent(kq, change_event, 1, NULL, 0, NULL) < 0) {
+    perror("kevent error");
+  }
   std::cout << std::endl
             << "*** New connection from "
             << inet_ntop(client_address.ss_family, getAddress((struct sockaddr*)&client_address), remoteIP,
@@ -108,27 +97,27 @@ void Server::getClientRequest() {
             << std::endl;
 }
 
-void Server::sendingMessageBackToClient(int index, HttpResponse const& response) {
-  char buffer[BUFSIZE_CLIENT_REQUEST];  // TO SET
-
-  long int ret_recv = read(poll_elem.poll_fds[index].fd, buffer, BUFSIZE_CLIENT_REQUEST);
+void Server::sendingMessageBackToClient(int event_fd, HttpResponse const& response) {
+  char buffer[BUFSIZE_CLIENT_REQUEST];
+  // if (fcntl(event_fd, F_SETFL, O_NONBLOCK) == -1) {
+  //   std::cerr << "Cannot set new socket to non blocking." << std ::endl;
+  //   throw ListenerException();
+  // }
+  long int ret_recv = read(event_fd, buffer, BUFSIZE_CLIENT_REQUEST);
 
   if (ret_recv == 0) {
     std::cerr << std::endl << "Error: Connection closed by client" << std::endl;
-    poll_elem = poll_elem.removeFromPollfds(index);
-    throw ClientSendResponseException();
+    return;
   }
   if (ret_recv < 0) {
     std::cerr << std::endl << "Error: No byte to read" << std::endl;
-    poll_elem = poll_elem.removeFromPollfds(index);
-    throw ClientSendResponseException();
+    return;
   }
   buffer[ret_recv] = '\0';
-
   std::cout << "Received from client : " << std ::endl << std::endl << buffer << std::endl;
   std::string raw_response = response.getRaw();
   std::cout << "Response sent to client : " << raw_response << std::endl << std::endl;
-  send(poll_elem.poll_fds[index].fd, (raw_response + "ok").c_str(), raw_response.length() + 2, 0);
+  send(event_fd, (raw_response + "ok").c_str(), raw_response.length() + 2, 0);
   std::cout << std::endl << "*** Message sent to client ***" << std::endl;
 }
 
@@ -136,24 +125,36 @@ void* Server::run() {
   try {
     createListenerSocket();
     startListening();
-    poll_elem.initPollElement(listener);
+    kq = kqueue();
+    struct timespec timeout = {0, 0};  // pas de timeout => ne bloque pas
+    EV_SET(change_event, listener, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, 0);
+    if (kevent(kq, change_event, 1, NULL, 0, &timeout) == -1) {
+      perror("kevent");
+      throw ServerCoreFatalException();
+    }
     while (true) {
-      pollProcessInit();
-      for (int i = 0; i < poll_elem.poll_fd_size; i++) {
-        try {
-          if ((poll_elem.poll_fds[i].revents & POLLIN) != 0) {
-            if (poll_elem.poll_fds[i].fd == listener) {
-              getClientRequest();
-            } else {
-              HttpResponse resp(HttpResponseSuccess::_200, "<html><body><h1>hello</h1></body></html>", "text/html",
-                                config_);
-              sendingMessageBackToClient(i, resp);
-              poll_elem.removeFromPollfds(i);
-            }
-          }
-        } catch (ServerCoreNonFatalException& e) {
-          std::cerr << e.what() << std::endl;
+      try {
+        new_events = kevent(kq, NULL, 0, event, 1, &timeout);
+        if (new_events == -1) {
+          std::cout << "kevent error" << std::endl;
+          throw ServerCoreNonFatalException();
         }
+        for (int i = 0; i < new_events; i++) {
+          int event_fd = event[i].ident;
+          if ((event[i].flags & EV_EOF) != 0) {
+            printf("Client has disconnected");
+            close(event_fd);
+          } else if (event_fd == listener) {
+            getClientRequest(event_fd);
+          } else if ((event[i].filter & EVFILT_READ) != 0) {
+            HttpResponse resp(HttpResponseSuccess::_200, "<html><body><h1>hello</h1></body></html>", "text/html",
+                              config_);
+            sendingMessageBackToClient(event_fd, resp);
+            close(event_fd);
+          }
+        }
+      } catch (ServerCoreNonFatalException& e) {
+        std::cerr << e.what() << std::endl;
       }
     }
     close(listener);

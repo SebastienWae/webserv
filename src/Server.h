@@ -2,19 +2,17 @@
 #define SERVER_H
 
 #include <netdb.h>
+#include <sys/event.h>
+#include <sys/time.h>
+#include <sys/types.h>
 
 #include <list>
 
 #include "HttpResponse.h"
-#include "PollElement.h"
 #include "ServerConfig.h"
 
-/*queue size of pending connections. if full => sends
-ECONNREFUSED or tries again to connect - depends on client */
 #define MAX_PENDING_CONNECTIONS 50   // TO SET
 #define BUFSIZE_CLIENT_REQUEST 4096  // TO SET
-
-#define TIMEOUT 5000
 
 /* to use for multiple ports => multithread */
 void* threadWrapper(void* current);
@@ -51,12 +49,12 @@ public:
 
   /* Client functions */
   static void* getAddress(struct sockaddr* sockaddress);
-  void getClientRequest();
+  void getClientRequest(int event_fd);
   class ClientGetRequestException : public ServerCoreNonFatalException {
   public:
     virtual char const* what() const throw();
   };
-  void sendingMessageBackToClient(int index, HttpResponse const& response);
+  void sendingMessageBackToClient(int event_fd, HttpResponse const& response);
   class ClientSendResponseException : public ServerCoreNonFatalException {
   public:
     virtual char const* what() const throw();
@@ -67,8 +65,11 @@ public:
   std::string port;
 
 private:
-  /* Element containing all needed things to execute poll */
-  PollElement poll_elem;
+  /*kqueue variables */
+  struct kevent change_event[4];
+  struct kevent event[4];
+  int new_events;
+  int kq;
 
   /* Listener variables */
   int listener;
