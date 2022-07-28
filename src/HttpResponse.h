@@ -25,9 +25,10 @@ private:
   ServerConfig const* server_config_;
   std::string const status_code_;
   std::string const reason_phrase_;
-  std::string content_type_;
   std::string body_;
   std::map<std::string, std::string> headers_;
+
+  std::string getContentLenght() const;
 };
 
 #endif
