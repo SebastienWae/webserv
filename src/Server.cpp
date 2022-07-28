@@ -41,10 +41,6 @@ void Server::startListening() const {
     std::cerr << "Listen failed" << std ::endl;
     throw ListenerException();
   }
-  // if (fcntl(listener, F_SETFL, O_NONBLOCK) == -1) {
-  //   std::cerr << "Cannot set fd to non blocking." << std ::endl;
-  //   throw ListenerException();
-  // }
 }
 
 void Server::createListenerSocket() {
@@ -63,7 +59,7 @@ void Server::createListenerSocket() {
     if (listener < 0) {
       continue;
     }
-    setsockopt(listener, SOL_SOCKET, SO_REUSEPORT, &y, sizeof(int));
+    setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &y, sizeof(int));
     if (fcntl(listener, F_SETFL, O_NONBLOCK) == -1) {
       std::cerr << "Cannot set fd to non blocking." << std ::endl;
       throw ListenerException();
@@ -82,22 +78,20 @@ void Server::createListenerSocket() {
 };
 
 void Server::pollProcessInit() {
-  std::cout << "POLL" << std::endl;
-  poll_elem.poll_ret = poll(&poll_elem.poll_fds[0], poll_elem.active_fds, 1);
+  poll_elem.poll_ret = poll(&poll_elem.poll_fds[0], poll_elem.active_fds, TIMEOUT);
   if (poll_elem.poll_ret == -1) {
     std::cerr << "Poll error." << std ::endl;
     throw PollException();
   }
   if (poll_elem.poll_ret == 0) {
-    // std::cout << "Poll timed out" << std ::endl;
-    // close connection with client when timeout ?
+    std::cout << "Poll timed out" << std ::endl;
   }
 }
 
 /* Called when data is ready to be received */
 void Server::getClientRequest() {
   address_len = sizeof(client_address);
-  std::cout << "ACCEPT" << std::endl;
+
   if ((new_socket = accept(listener, (struct sockaddr*)&client_address, (socklen_t*)&address_len)) < 0) {
     std::cerr << "Accept error" << std ::endl;
     std::cout << strerror(errno) << std::endl;
@@ -106,7 +100,6 @@ void Server::getClientRequest() {
     std::cerr << "Cannot set newfd to non blocking." << std ::endl;
   }
   poll_elem = poll_elem.addToPollfds(new_socket);
-  std::cout << "INET" << std::endl;
   std::cout << std::endl
             << "*** New connection from "
             << inet_ntop(client_address.ss_family, getAddress((struct sockaddr*)&client_address), remoteIP,
@@ -117,7 +110,7 @@ void Server::getClientRequest() {
 
 void Server::sendingMessageBackToClient(int index, HttpResponse const& response) {
   char buffer[BUFSIZE_CLIENT_REQUEST];  // TO SET
-  std::cout << "READ" << std::endl;
+
   long int ret_recv = read(poll_elem.poll_fds[index].fd, buffer, BUFSIZE_CLIENT_REQUEST);
 
   if (ret_recv == 0) {
@@ -144,11 +137,6 @@ void* Server::run() {
     createListenerSocket();
     startListening();
     poll_elem.initPollElement(listener);
-
-    // std::cout << std::endl
-    //           << "-----------> READY TO START ON PORT " << config_.getport() << " <-----------" << std::endl
-    //           << std::endl;
-
     while (true) {
       pollProcessInit();
       for (int i = 0; i < poll_elem.poll_fd_size; i++) {

@@ -1,5 +1,6 @@
 #include "PollElement.h"
 
+#include <fcntl.h>
 #include <unistd.h>
 
 PollElement::PollElement() {

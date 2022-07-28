@@ -12,7 +12,7 @@
 /*queue size of pending connections. if full => sends
 ECONNREFUSED or tries again to connect - depends on client */
 #define MAX_PENDING_CONNECTIONS 50   // TO SET
-#define BUFSIZE_CLIENT_REQUEST 1024  // TO SET
+#define BUFSIZE_CLIENT_REQUEST 4096  // TO SET
 
 #define TIMEOUT 5000
 
