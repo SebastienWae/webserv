@@ -1,5 +1,7 @@
 #include "PollElement.h"
 
+#include <unistd.h>
+
 PollElement::PollElement() {
   poll_fd_size = 0;
   active_fds = 0;
@@ -29,6 +31,7 @@ PollElement PollElement::addToPollfds(int new_socket) {
 }
 
 PollElement PollElement::removeFromPollfds(int i) {
+  close(poll_fds[i].fd);
   poll_fds[i].fd = -1;
   poll_fds[i].events = 0;
   poll_fds[i].revents = 0;

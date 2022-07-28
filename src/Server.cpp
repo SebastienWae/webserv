@@ -41,10 +41,10 @@ void Server::startListening() const {
     std::cerr << "Listen failed" << std ::endl;
     throw ListenerException();
   }
-  if (fcntl(listener, F_SETFL, O_NONBLOCK) == -1) {
-    std::cerr << "Cannot set fd to non blocking." << std ::endl;
-    throw ListenerException();
-  }
+  // if (fcntl(listener, F_SETFL, O_NONBLOCK) == -1) {
+  //   std::cerr << "Cannot set fd to non blocking." << std ::endl;
+  //   throw ListenerException();
+  // }
 }
 
 void Server::createListenerSocket() {
@@ -63,7 +63,11 @@ void Server::createListenerSocket() {
     if (listener < 0) {
       continue;
     }
-    setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &y, sizeof(int));
+    setsockopt(listener, SOL_SOCKET, SO_REUSEPORT, &y, sizeof(int));
+    if (fcntl(listener, F_SETFL, O_NONBLOCK) == -1) {
+      std::cerr << "Cannot set fd to non blocking." << std ::endl;
+      throw ListenerException();
+    }
     if (bind(listener, p->ai_addr, p->ai_addrlen) < 0) {
       close(listener);
       continue;
@@ -78,7 +82,8 @@ void Server::createListenerSocket() {
 };
 
 void Server::pollProcessInit() {
-  poll_elem.poll_ret = poll(&poll_elem.poll_fds[0], poll_elem.active_fds, TIMEOUT);
+  std::cout << "POLL" << std::endl;
+  poll_elem.poll_ret = poll(&poll_elem.poll_fds[0], poll_elem.active_fds, 1);
   if (poll_elem.poll_ret == -1) {
     std::cerr << "Poll error." << std ::endl;
     throw PollException();
@@ -92,11 +97,16 @@ void Server::pollProcessInit() {
 /* Called when data is ready to be received */
 void Server::getClientRequest() {
   address_len = sizeof(client_address);
+  std::cout << "ACCEPT" << std::endl;
   if ((new_socket = accept(listener, (struct sockaddr*)&client_address, (socklen_t*)&address_len)) < 0) {
     std::cerr << "Accept error" << std ::endl;
-    throw ClientGetRequestException();
+    std::cout << strerror(errno) << std::endl;
+  }
+  if (fcntl(new_socket, F_SETFL, O_NONBLOCK) == -1) {
+    std::cerr << "Cannot set newfd to non blocking." << std ::endl;
   }
   poll_elem = poll_elem.addToPollfds(new_socket);
+  std::cout << "INET" << std::endl;
   std::cout << std::endl
             << "*** New connection from "
             << inet_ntop(client_address.ss_family, getAddress((struct sockaddr*)&client_address), remoteIP,
@@ -107,7 +117,8 @@ void Server::getClientRequest() {
 
 void Server::sendingMessageBackToClient(int index, HttpResponse const& response) {
   char buffer[BUFSIZE_CLIENT_REQUEST];  // TO SET
-  long int ret_recv = recv(poll_elem.poll_fds[index].fd, buffer, BUFSIZE_CLIENT_REQUEST, 0);
+  std::cout << "READ" << std::endl;
+  long int ret_recv = read(poll_elem.poll_fds[index].fd, buffer, BUFSIZE_CLIENT_REQUEST);
 
   if (ret_recv == 0) {
     std::cerr << std::endl << "Error: Connection closed by client" << std::endl;
@@ -150,8 +161,6 @@ void* Server::run() {
                                 config_);
               sendingMessageBackToClient(i, resp);
               poll_elem.removeFromPollfds(i);
-              close(new_socket);
-              // std::cout << poll_elem << std::endl;
             }
           }
         } catch (ServerCoreNonFatalException& e) {
@@ -169,5 +178,3 @@ void* Server::run() {
 void* threadWrapper(void* current) { return (static_cast<Server*>(current))->run(); };
 
 ServerConfig const* Server::getConfig() const { return (config_); };
-// max body size : config_.getsize()
-// ip : config_.listen si diff de default sinon config_.server_name
