@@ -7,7 +7,9 @@
 #include <sys/types.h>
 
 #include <list>
+#include <vector>
 
+#include "Config.h"
 #include "HttpResponse.h"
 #include "ServerConfig.h"
 
@@ -15,10 +17,10 @@
 #define BUFSIZE_CLIENT_REQUEST 4096  // TO SET
 
 /* to use for multiple ports => multithread */
-void* threadWrapper(void* current);
+// void* threadWrapper(void* current);
 class Server {
 public:
-  Server(ServerConfig const* config);
+  Server(Config& servers_list);
   ~Server();
   class ServerCoreFatalException : public std::exception {
   public:
@@ -33,9 +35,9 @@ public:
   void* run();
 
   /* Listener functions */
-  void createListenerSocket();
-  void startListening() const;
-  class ListenerException : public ServerCoreFatalException {
+  void createListenersSocket(ServerConfig const& server);
+
+  class ListenerException : public ServerCoreNonFatalException {
   public:
     virtual char const* what() const throw();
   };
@@ -54,7 +56,8 @@ public:
   public:
     virtual char const* what() const throw();
   };
-  void sendingMessageBackToClient(int event_fd, HttpResponse const& response);
+  // static void sendingMessageBackToClient(int event_fd, HttpResponse const& response);
+  static void sendingMessageBackToClient(int event_fd);
   class ClientSendResponseException : public ServerCoreNonFatalException {
   public:
     virtual char const* what() const throw();
@@ -62,7 +65,8 @@ public:
 
   ServerConfig const* getConfig() const;
   /* TO DO : Setter and Getter to put these variables in private */
-  std::string port;
+
+  void closeListeners();
 
 private:
   /*kqueue variables */
@@ -72,17 +76,16 @@ private:
   int kq;
 
   /* Listener variables */
-  int listener;
-  struct addrinfo hints;
-  struct addrinfo* address_info;
-  struct addrinfo* p;
+  std::vector<int> listeners;  // faire struct avec listener + config associee
 
   /* Client request variables */
   int new_socket;
   sockaddr_storage client_address;
   socklen_t address_len;
   char remoteIP[INET6_ADDRSTRLEN];
-  ServerConfig const* config_;
+
+  Config servers_list_;
+  // ServerConfig const* config_;
 };
 
 #endif
