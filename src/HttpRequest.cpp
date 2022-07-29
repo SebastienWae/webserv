@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "Http.h"
+#include "Uri.h"
 #include "Utils.h"
 
 HttpRequest::MethodMap initMethodMap() {
@@ -50,13 +51,11 @@ HttpRequest::HttpRequest(std::string const& raw) : status_(S_NONE), method_(Http
         }
         break;
       }
-      // TODO: validate URI
       case STATE_URI: {
         try {
           std::string uri = Utils::getNextToken(raw, it, SP);
           if (!uri.empty()) {
-            // std::transform(uri.begin(), uri.end(), uri.begin(), ::tolower);
-            uri_ = uri;
+            uri_ = Uri(uri);
             it += uri.length();  // NOLINT
             if (*it == SP) {
               ++it;
@@ -67,7 +66,7 @@ HttpRequest::HttpRequest(std::string const& raw) : status_(S_NONE), method_(Http
           } else {
             status_ = S_BAD_REQUEST;
           }
-        } catch (std::out_of_range) {
+        } catch (std::exception) {
           status_ = S_BAD_REQUEST;
         }
         break;
@@ -202,7 +201,7 @@ enum HttpRequest::status HttpRequest::getStatus() const { return status_; }
 
 enum Http::method HttpRequest::getMethod() const { return method_; }
 
-std::string HttpRequest::getUri() const { return uri_; }
+Uri HttpRequest::getUri() const { return uri_; }
 
 std::string HttpRequest::getVersion() const { return version_; }
 

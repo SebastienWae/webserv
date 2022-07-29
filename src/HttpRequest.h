@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "Http.h"
+#include "Uri.h"
 
 class HttpRequest {
 public:
@@ -24,7 +25,7 @@ public:
 
   enum status getStatus() const;
   enum Http::method getMethod() const;
-  std::string getUri() const;
+  Uri getUri() const;
   std::string getVersion() const;
   std::map<std::string, std::string> getHeaders() const;
   std::string getBody() const;
@@ -43,7 +44,7 @@ private:
 
   enum status status_;
   enum Http::method method_;
-  std::string uri_;
+  Uri uri_;
   std::string version_;
   std::map<std::string, std::string> headers_;
   std::string body_;
