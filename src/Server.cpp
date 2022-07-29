@@ -7,11 +7,14 @@
 #include <sys/event.h>
 #include <sys/fcntl.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
 
 #include <algorithm>
+#include <cstring>
 #include <exception>
+#include <iostream>
 #include <iterator>
 
 #include "HttpResponse.h"
@@ -86,6 +89,7 @@ void Server::createListenersSocket(ServerConfig const& server) {
     throw ListenerException();
   }
   listeners.push_back(new_listener);
+  configs.push_back(server);
 };
 
 void Server::getClientRequest(int event_fd) {
@@ -134,7 +138,7 @@ void Server::getClientRequest(int event_fd) {
 //   std::cout << std::endl << "*** Message sent to client ***" << std::endl;
 // }
 
-void Server::sendingMessageBackToClient(int event_fd) {
+void Server::sendingMessageBackToClient(int event_fd, ServerConfig* cc) {
   char buffer[BUFSIZE_CLIENT_REQUEST];
 
   long int ret_recv = read(event_fd, buffer, BUFSIZE_CLIENT_REQUEST);
@@ -149,8 +153,8 @@ void Server::sendingMessageBackToClient(int event_fd) {
   }
   buffer[ret_recv] = '\0';
   std::cout << "Received from client : " << std ::endl << std::endl << buffer << std::endl;
-  std::string resp = "blibli";
-  HttpResponse r(HttpResponseSuccess::_200, NULL);
+
+  HttpResponse r(HttpResponseSuccess::_200, cc);
   send(event_fd, r.getRaw().c_str(), r.getRaw().size(), 0);
   std::cout << std::endl << "*** Message sent to client ***" << std::endl;
 }
@@ -177,7 +181,7 @@ void* Server::run() {
 
     for (std::vector<int>::iterator it = listeners.begin(); it != listeners.end(); ++it) {
       EV_SET(&change_event[std::distance(listeners.begin(), it)], *it, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0,
-             NULL);  // passer udata
+             &configs[std::distance(listeners.begin(), it)]);  // passer udata
     }
     if (kevent(kq, change_event, listeners.size(), NULL, 0, &timeout) == -1) {
       perror("kevent");
@@ -192,15 +196,15 @@ void* Server::run() {
         }
         for (int i = 0; i < new_events; i++) {
           int event_fd = event[i].ident;  // NOLINT
-          // ServerConfig* cc = event[i].udata;
+          ServerConfig* cc = event[i].udata;
           if ((event[i].flags & EV_EOF) != 0) {
             printf("Client has disconnected");
             close(event_fd);
-          } else if (std::find(listeners.begin(), listeners.end(), event_fd) != listeners.end()) {  // is in
+          } else if (std::find(listeners.begin(), listeners.end(), event_fd) != listeners.end()) {
             getClientRequest(event_fd);
           } else if ((event[i].filter & EVFILT_READ) != 0) {
             // sendingMessageBackToClient(event_fd, resp);
-            sendingMessageBackToClient(event_fd);
+            sendingMessageBackToClient(event_fd, cc);
             close(event_fd);
           }
         }

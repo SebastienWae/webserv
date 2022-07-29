@@ -2,7 +2,6 @@
 #define SERVER_H
 
 #include <netdb.h>
-#include <sys/event.h>
 #include <sys/time.h>
 #include <sys/types.h>
 
@@ -10,7 +9,6 @@
 #include <vector>
 
 #include "Config.h"
-#include "HttpResponse.h"
 #include "ServerConfig.h"
 
 #define MAX_PENDING_CONNECTIONS 50   // TO SET
@@ -76,7 +74,8 @@ private:
   int kq;
 
   /* Listener variables */
-  std::vector<int> listeners;  // faire struct avec listener + config associee
+  std::vector<int> listeners;
+  std::vector<ServerConfig> configs;  // faire struct avec listener + config associee
 
   /* Client request variables */
   int new_socket;
