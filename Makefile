@@ -16,7 +16,6 @@ SRCS = main.cpp \
 	Config.cpp \
 	Location.cpp \
 	ServerConfig.cpp \
-	Utils.cpp \
 	HttpRequest.cpp \
 	HttpResponse.cpp \
 	HttpResponseStatus.cpp \
