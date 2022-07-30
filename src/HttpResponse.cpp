@@ -102,14 +102,15 @@ std::string HttpResponse::getContentLenght() const {
 }
 
 std::string HttpResponse::getRaw() const {
-  (void)server_config_;  // TODO: remove
   std::string result;
+
   result.append(HTTP_VERSION);
   result.push_back(SP);
   result.append(status_code_);
   result.push_back(SP);
   result.append(reason_phrase_);
   result.append(CRLF);
+
   for (std::map<std::string, std::string>::const_iterator it = headers_.begin(); it != headers_.end(); ++it) {
     result.append(it->first);
     result.push_back(':');
@@ -117,8 +118,12 @@ std::string HttpResponse::getRaw() const {
     result.append(it->second);
     result.append(CRLF);
   }
+
   result.append(CRLF);
-  result.append(body_);
-  result.append(CRLF);
+
+  if (!body_.empty()) {
+    result.append(body_);
+    result.append(CRLF);
+  }
   return result;
 }
