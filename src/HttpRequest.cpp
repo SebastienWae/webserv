@@ -2,6 +2,7 @@
 
 #include <cctype>
 #include <cstddef>
+#include <exception>
 #include <string>
 #include <utility>
 
@@ -11,18 +12,20 @@
 HttpRequest::MethodMap initMethodMap() {
   HttpRequest::MethodMap map;
   map.insert(std::pair<std::string, enum Http::method>("GET", Http::GET));
+  map.insert(std::pair<std::string, enum Http::method>("HEAD", Http::HEAD));
   map.insert(std::pair<std::string, enum Http::method>("POST", Http::POST));
   map.insert(std::pair<std::string, enum Http::method>("DELETE", Http::DELETE));
   return map;
 }
 const HttpRequest::MethodMap HttpRequest::method_map = initMethodMap();
 
+// TODO: check request size
 // NOLINTNEXTLINE
 HttpRequest::HttpRequest(std::string const& raw) : status_(S_NONE), time_(std::time(nullptr)), method_(Http::UNKNOWN) {
   enum req_parse_state state = S_REQ_METHOD;
   std::string header_name;
   std::string::const_iterator last_token;
-  for (std::string::const_iterator it = raw.begin(); it != raw.end() && status_ != S_NONE && status_ != S_CONTINUE;) {
+  for (std::string::const_iterator it = raw.begin(); it != raw.end() && (status_ == S_NONE || status_ == S_CONTINUE);) {
     switch (state) {
       case S_REQ_METHOD: {
         std::string::size_type len = raw.find(SP);
@@ -59,7 +62,7 @@ HttpRequest::HttpRequest(std::string const& raw) : status_(S_NONE), time_(std::t
             } else {
               status_ = S_BAD_REQUEST;
             }
-          } catch (Uri::UriParsingException) {
+          } catch (Uri::UriParsingException& e) {
             status_ = S_BAD_REQUEST;
           }
         } else if (std::isprint(*it) != 0) {
@@ -123,7 +126,6 @@ HttpRequest::HttpRequest(std::string const& raw) : status_(S_NONE), time_(std::t
             status_ = S_BAD_REQUEST;
           } else {
             headers_[header_name] = value;
-            header_name.clear();
             if (header_name == "expect") {
               std::transform(value.begin(), value.end(), value.begin(), ::tolower);
               if (value == "100-continue") {
@@ -132,6 +134,7 @@ HttpRequest::HttpRequest(std::string const& raw) : status_(S_NONE), time_(std::t
                 status_ = S_EXPECTATION_FAILED;
               }
             }
+            header_name.clear();
             if (status_ == S_NONE || status_ == S_CONTINUE) {
               if (*it == CR && *(it + 1) == LF) {
                 it += 2;
@@ -171,6 +174,7 @@ HttpRequest::HttpRequest(std::string const& raw) : status_(S_NONE), time_(std::t
   }
 }
 
+// TODO
 // if host -> bad request
 bool HttpRequest::addChunk(std::string const& chunk) {
   (void)chunk;
@@ -215,3 +219,17 @@ Uri const& HttpRequest::getUri() const { return uri_; }
 std::map<std::string, std::string> const& HttpRequest::getHeaders() const { return headers_; }
 
 std::string const& HttpRequest::getBody() const { return body_; }
+
+std::string HttpRequest::getHost() const {
+  std::map<std::string, std::string>::const_iterator h_it = headers_.find("host");
+
+  if (h_it != headers_.end()) {
+    std::string host = h_it->second;
+
+    if (host.find(':') == std::string::npos) {
+      host += ":80";
+    }
+    return host;
+  }
+  return "";
+}

@@ -1,257 +1,147 @@
 #include "ServerConfig.h"
 
-#include <utility>
+#include <cstddef>
+#include <limits>
 #include <vector>
-ServerConfig::ServerConfig()
-    : listen("default"),
-      root("default"),
-      port("80"),
-      server_names("default"),
-      error_page("default"),
-      client_max_body_size("default"),
-      auth("default"),
-      max_size(0){};
 
-ServerConfig &ServerConfig::operator=(ServerConfig const &rhs) {
-  if (this != &rhs) {
-    this->listen = rhs.listen;
-    this->root = rhs.root;
-    this->port = rhs.port;
-    this->auth = rhs.auth;
-    this->authpair = rhs.authpair;
-    this->server_names = rhs.server_names;
-    this->error_page = rhs.error_page;
-    this->client_max_body_size = rhs.client_max_body_size;
-    this->location = rhs.location;
-  }
-  return (*this);
-}
+#include "HttpResponseStatus.h"
 
-ServerConfig::ServerConfig(ServerConfig const &src) { *this = src; };
+ServerConfig::ServerConfig(std::string const& hostname, std::string const& port)
+    : hostname_(hostname.empty() ? "localhost" : hostname),
+      port_(port.empty() ? "80" : port),
+      max_body_size_(std::numeric_limits<std::size_t>::max()) {}
 
-ServerConfig::~ServerConfig(){};
-
-void ServerConfig::setlisten(const std::string &tmp) { this->listen = tmp; }
-
-void ServerConfig::setserver_names(const std::string &tmp) { this->server_names = tmp; }
-
-void ServerConfig::seterror_page(const std::string &tmp) { this->error_page = tmp; }
-
-void ServerConfig::setroot(const std::string &tmp) { this->root = tmp; }
-
-void ServerConfig::setport(const std::string &tmp) { this->port = tmp; }
-
-void ServerConfig::setauth(const std::string &tmp) { this->auth = tmp; }
-
-void ServerConfig::setclient_max_body_size(const std::string &tmp) { this->client_max_body_size = tmp; }
-
-void ServerConfig::setlocation(const Location &loc) { this->location.push_back(loc); }
-
-std::string ServerConfig::getlisten(void) const { return (this->listen); }
-
-std::string ServerConfig::getroot(void) const { return (this->root); }
-
-std::string ServerConfig::getport(void) const { return (this->port); }
-
-std::string ServerConfig::getserver_names(void) const { return (this->server_names); }
-
-std::map<enum HttpResponseClientError::code, std::string> ServerConfig::getclienterror(void) const {
-  return (this->clienterror);
-}
-
-std::map<enum HttpResponseServerError::code, std::string> ServerConfig::getservererror(void) const {
-  return (this->servererror);
-}
-std::pair<std::string, std::string> ServerConfig::getauthpair(void) const { return (this->authpair); }
-
-int ServerConfig::getsize(void) const { return (this->max_size); }
-
-std::vector<Location> ServerConfig::getlocation(void) const { return (this->location); }
-
-void ServerConfig::parseserv(void) {
-  if (this->listen.compare(0, strlen("listen "), "listen ") == 0) {
-    this->listen.erase(0, strlen("listen "));
-  }
-  if (this->root.compare(0, strlen("root "), "root ") == 0) {
-    this->root.erase(0, strlen("root "));
-  }
-  if (this->port.compare(0, strlen("port "), "port ") == 0) {
-    this->port.erase(0, strlen("port "));
-  }
-
-  if (this->server_names.compare(0, strlen("server_name "), "server_name ") == 0) {
-    this->server_names.erase(0, strlen("server_name "));
-  }
-  if (this->error_page.compare(0, strlen("error_page "), "error_page ") == 0) {
-    this->error_page.erase(0, strlen("error_page "));
-  }
-  if (this->client_max_body_size.compare(0, strlen("client_max_body_size "), "client_max_body_size ") == 0) {
-    this->client_max_body_size.erase(0, strlen("client_max_body_size "));
-  }
-  if (this->auth.compare(0, strlen("auth "), "auth ") == 0) {
-    this->auth.erase(0, strlen("auth "));
-  }
-  for (size_t i = 0; i < this->location.size(); i++) {
-    this->location[i].parseloc();
-    this->location[i].parseallow();
-    this->location[i].trimloc();
-    this->location[i].parseredir();
+ServerConfig::~ServerConfig() {
+  for (std::vector<Route*>::iterator it = routes_.begin(); it != routes_.end(); ++it) {
+    delete *it;
   }
 }
 
-void ServerConfig::checkip(void) {
-  std::vector<std::string> tmp;
-  size_t start = 0;
-  size_t end = 0;
+ServerConfig::ParsingException::ParsingException(std::string const& msg) throw() : msg_(msg) {}
+ServerConfig::ParsingException::~ParsingException() throw() {}
+char const* ServerConfig::ParsingException::what() const throw() { return msg_.c_str(); }
 
-  for (size_t i = 0; i < this->listen.size(); i++) {
-    if ((this->listen.compare(i, strlen("."), ".")) == 0) {
-      end = i;
-      tmp.push_back(this->listen.substr(start, end - start));
-      start = end + 1;
+Route* ServerConfig::parse(std::string const& line) {
+  std::string::size_type sep = line.find('=');
+  if (sep != std::string::npos) {
+    std::string key = line.substr(0, sep);
+    std::string value = line.substr(sep + 1);
+
+    if (key == "max_body_size") {
+      max_body_size_ = std::atoi(value.c_str());
+      return NULL;
     }
-  }
-  if (tmp.size() > 4) {
-    throw ServerConfig::IpException();
-  }
-  for (size_t i = 0; i < tmp.size(); i++) {
-    for (size_t j = 0; j < tmp[i].size(); j++) {
-      if (tmp[i][0] > '2' || tmp[i][0] < '0') {
-        throw ServerConfig::IpException();
+    if (key == "error") {
+      // TODO: validate path
+      sep = line.find(' ');
+      std::string code = value.substr(0, sep);
+      std::string path = value.substr(sep + 1);
+
+      int code_i = std::atoi(code.c_str());
+      if ((code_i - 400) >= 0 && (code_i - 400) < (418 - 400)) {
+        std::pair<HttpResponseClientError::code, std::string> page(
+            static_cast<HttpResponseClientError::code>(code_i - 400), path);
+        client_errors_pages_.insert(page);
+        return NULL;
       }
-      if (tmp[i][0] == '2' && (tmp[i][1] > '5')) {
-        throw ServerConfig::IpException();
-      }
-      if (tmp[i][0] == '2' && (tmp[i][1] == '5') && (tmp[i][1] > '5')) {
-        throw ServerConfig::IpException();
-      }
-      if (tmp[i][j] > '9' || tmp[i][j] < '0') {
-        throw ServerConfig::IpException();
+      if ((code_i - 500) >= 0 && (code_i - 500) < (506 - 500)) {
+        std::pair<HttpResponseServerError::code, std::string> page(
+            static_cast<HttpResponseServerError::code>(code_i - 500), path);
+        server_errors_pages_.insert(page);
+        return NULL;
       }
     }
+    if (key == "route") {
+      // TODO: check uri
+      for (std::vector<Route*>::iterator it = routes_.begin(); it != routes_.end(); ++it) {
+        if ((*it)->getLocation() == value) {
+          return *it;
+        }
+      }
+      Route* new_route = new Route(value);
+      routes_.push_back(new_route);
+      return new_route;
+    }
+  }
+  throw ParsingException("Config file error at line: " + line);
+}
+
+void ServerConfig::verify() const throw(ParsingException) {
+  if (hostname_.empty() || port_.empty()) {
+    throw ParsingException("All servers must have an hostname and a port");
+  }
+  if (routes_.empty()) {
+    throw ParsingException("All server must have at least one default route '/'");
+  }
+  if (matchRoute(Uri("/")) == NULL) {
+    throw ParsingException("All server must have a default '/' route");
   }
 }
 
-void ServerConfig::checkport(void) {
-  std::string str;
-  for (size_t i = 0; i < this->port.size(); i++) {
-    for (size_t i = 0; i < this->port.size(); i++) {
-      if (this->port.size() > 5) {
-        throw ServerConfig::PortException();
-      }
+Route const* ServerConfig::matchRoute(Uri const& uri) const {  // NOLINT
+  int max = 0;
+  Route* match = NULL;
+  Route* defaut_match = NULL;
+
+  std::string uri_path = uri.getPath();
+  for (std::vector<Route*>::const_iterator it = routes_.begin(); it != routes_.end(); ++it) {
+    std::string route_path = (*it)->getLocation();
+    std::string::iterator uri_it = uri_path.begin();
+    std::string::iterator route_it = route_path.begin();
+
+    if (route_path == "/") {
+      defaut_match = *it;
     }
-    if (this->port.size() == 1) {
-      if (this->port[0] > '9' || this->port[0] < '0') {
-        throw ServerConfig::PortException();
+
+    int c = 0;
+    while (true) {
+      if (*uri_it != *route_it) {
+        if (uri_it == uri_path.end()) {
+          c = 0;
+          break;
+        }
+        if (route_it == route_path.end() && *uri_it == '/') {
+          ++c;
+          break;
+        }
+        c = 0;
+        break;
       }
+      if (route_it == route_path.end()) {
+        return *it;
+      }
+      if (*route_it == '/') {
+        ++c;
+      }
+      ++uri_it;
+      ++route_it;
     }
-    if (this->port.size() == 2) {
-      if (this->port[0] > '9' || this->port[0] < '0' || this->port[1] > '9' || this->port[1] < '0') {
-        throw ServerConfig::PortException();
-      }
-    }
-    if (this->port.size() == 3) {
-      if (this->port[0] > '9' || this->port[0] < '0' || this->port[1] > '9' || this->port[1] < '0'
-          || this->port[2] > '9' || this->port[2] < '0') {
-        throw ServerConfig::PortException();
-      }
-    }
-    if (this->port.size() == 4) {
-      if (this->port[0] > '9' || this->port[0] < '0' || this->port[1] > '9' || this->port[1] < '0'
-          || this->port[2] > '9' || this->port[2] < '0' || this->port[3] > '9' || this->port[3] < '0') {
-        throw ServerConfig::PortException();
-      }
-    }
-    if (this->port.size() == 5) {
-      if (this->port[0] > '9' || this->port[0] < '0' || this->port[1] > '9' || this->port[1] < '0'
-          || this->port[2] > '9' || this->port[2] < '0' || this->port[3] > '9' || this->port[3] < '0'
-          || this->port[4] > '9' || this->port[4] < '0') {
-        throw ServerConfig::PortException();
-      }
-      if (this->port[0] == '6' && this->port[1] > '5') {
-        throw ServerConfig::PortException();
-      }
-      if (this->port[0] == '6' && this->port[1] == '5' && this->port[2] > '5') {
-        throw ServerConfig::PortException();
-      }
-      if (this->port[0] == '6' && this->port[1] == '5' && this->port[2] == '5' && this->port[3] > '3') {
-        throw ServerConfig::PortException();
-      }
-      if (this->port[0] == '6' && this->port[1] == '5' && this->port[2] == '5' && this->port[3] == '3'
-          && this->port[4] > '5') {
-        throw ServerConfig::PortException();
-      }
+    if (c > max) {
+      max = c;
+      match = *it;
     }
   }
+  return match == NULL ? defaut_match : match;
 }
 
-void ServerConfig::trimserv(void) {
-  size_t found = std::string::npos;
-  const std::string WHITESPACE = " \n\r\t\f\v";
-  found = this->client_max_body_size.find_first_of(WHITESPACE);
-  if (found != std::string::npos) {
-    throw ServerConfig::TrimservException();
-  }
-  found = this->root.find_first_of(WHITESPACE);
-  if (found != std::string::npos) {
-    throw ServerConfig::TrimservException();
-  }
-  found = this->server_names.find_first_of(WHITESPACE);
-  if (found != std::string::npos) {
-    throw ServerConfig::TrimservException();
-  }
-  found = this->auth.find_first_of(WHITESPACE);
-  if (found != std::string::npos) {
-    throw ServerConfig::TrimservException();
-  }
+std::string const& ServerConfig::getHostname() const { return hostname_; }
 
-  size_t n = this->client_max_body_size.length();
-  char char_array[n + 1];
-  strcpy(char_array, this->client_max_body_size.c_str());
-  this->max_size = atoi(char_array);
+std::string const& ServerConfig::getPort() const { return port_; }
+
+std::string ServerConfig::getErrorPage(HttpResponseClientError::code code) const {
+  std::map<HttpResponseClientError::code, std::string>::const_iterator error_page = client_errors_pages_.find(code);
+  if (error_page != client_errors_pages_.end()) {
+    return error_page->second;
+  }
+  return "";
 }
 
-void ServerConfig::parserror(void) {
-  size_t found;
-  std::string tmp;
-  std::string tmp2;
-  size_t size;
-  found = this->error_page.find_first_of(' ', 0);
-  tmp = this->error_page.substr(0, found);
-  tmp2 = this->error_page.substr(found + 1, this->error_page.size());
-  // conversion into int
-  std::pair<enum HttpResponseClientError::code, std::string> p1;
-  std::pair<enum HttpResponseServerError::code, std::string> p2;
-  size_t n = tmp.length();
-  char char_array[n + 1];
-  strcpy(char_array, tmp.c_str());
-  size = atoi(char_array);
-  if ((size - 400) >= 0 && (size - 400) < (418 - 400)) {
-    p1.first = static_cast<HttpResponseClientError::code>(size - 400);
-    p1.second = tmp2;
-    this->clienterror.insert(p1);
-  } else if ((size - 500) >= 0 && (size - 500) < (506 - 500)) {
-    p2.first = static_cast<enum HttpResponseServerError::code>(size - 500);
-    p2.second = tmp2;
-    this->servererror.insert(p2);
+std::string ServerConfig::getErrorPage(HttpResponseServerError::code code) const {
+  std::map<HttpResponseServerError::code, std::string>::const_iterator error_page = server_errors_pages_.find(code);
+  if (error_page != server_errors_pages_.end()) {
+    return error_page->second;
   }
-}
-void ServerConfig::splitauth(void) {
-  size_t found;
-  found = this->auth.find_first_of(':', 0);
-  this->authpair.first = this->auth.substr(0, found);
-  this->authpair.second = this->auth.substr(found + 1, this->auth.size());
+  return "";
 }
 
-Location const *ServerConfig::matchLocation(Uri const &uri) {
-  for (std::vector<Location>::iterator it = location.begin(); it != location.end(); ++it) {
-    if (uri.getPath() == it->geturi().getPath()) {
-      return &(*it);
-    }
-  }
-  return NULL;
-}
-
-const char *ServerConfig::IpException::what(void) const throw() { return ("Exception  : Bad IP"); }
-const char *ServerConfig::TrimservException::what(void) const throw() { return ("Exception  : Trimserv"); }
-const char *ServerConfig::PortException::what(void) const throw() { return ("Exception  : Bad Port"); }
+std::size_t ServerConfig::getMaxBodySize() const { return max_body_size_; }

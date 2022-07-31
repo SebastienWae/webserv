@@ -1,5 +1,5 @@
-#ifndef HTTPCODE_H
-#define HTTPCODE_H
+#ifndef HTTPRESPONSESTATUS_H
+#define HTTPRESPONSESTATUS_H
 
 #include <string>
 #include <vector>

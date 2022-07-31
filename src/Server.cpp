@@ -1,15 +1,14 @@
 #include "Server.h"
 
+#include <vector>
+
+#include "Http.h"
 #include "HttpResponse.h"
 #include "HttpResponseStatus.h"
 #include "Log.h"
+#include "ServerConfig.h"
 
-Server::Server(Config const& config) : config_(config), kq_(kqueue()) {
-  std::vector<ServerConfig> const* servers_config = config_.getServerConfig();
-  for (std::vector<ServerConfig>::const_iterator it = servers_config->begin(); it != servers_config->end(); ++it) {
-    ports_.insert(it->getport());
-  }
-}
+Server::Server(Config const& config) : config_(config), kq_(kqueue()) {}
 
 Server::~Server() {
   INFO("Stoping server");
@@ -29,7 +28,8 @@ Server::~Server() {
 void Server::start() {  // NOLINT
   INFO("Starting server");
 
-  for (std::set<std::string>::const_iterator it = ports_.begin(); it != ports_.end(); ++it) {
+  std::set<std::string> ports = config_.getPorts();
+  for (std::set<std::string>::const_iterator it = ports.begin(); it != ports.end(); ++it) {
     listenToPort(*it);
   }
 
@@ -38,7 +38,7 @@ void Server::start() {  // NOLINT
     int n_events = kevent(kq_, NULL, 0, events_, KQ_SIZE, &timeout);  // NOLINT
     if (n_events == 0) {
       for (std::map<int, Client*>::iterator it = clients_.begin(); it != clients_.end(); ++it) {
-        if (it->second->getTime() + TIMEOUT >= std::time(nullptr)) {
+        if (it->second->getTime() + TIMEOUT <= std::time(nullptr)) {
           timeoutClient(it->second);
         }
       }
@@ -60,7 +60,7 @@ void Server::start() {  // NOLINT
           } else if ((events_[i].flags & EV_EOF) != 0 || client->hasReplied()) {
             removeClient(client);
           } else if (events_[i].filter == EVFILT_READ) {
-            if (client->getTime() + TIMEOUT >= std::time(nullptr)) {
+            if (client->getTime() + TIMEOUT <= std::time(nullptr)) {
               timeoutClient(client);
             } else {
               client->read(events_[i].data);
@@ -71,7 +71,11 @@ void Server::start() {  // NOLINT
               }
             }
           } else if (events_[i].filter == EVFILT_WRITE) {
-            client->send(events_[i].data);
+            if (!client->hasReplied()) {
+              client->send(events_[i].data);
+            } else {
+              removeClient(client);
+            }
           }
         } catch (std::exception& e) {
           if (client == NULL) {
@@ -85,17 +89,121 @@ void Server::start() {  // NOLINT
   }
 }
 
+void Server::processRequest(Client* client) {
+  HttpResponse* response;
+  ServerConfig const* server_config = config_.matchServerConfig(client->getRequest());
+
+  switch (client->getRequest()->getStatus()) {
+    case HttpRequest::S_NONE: {
+      response = new HttpResponse(HttpResponseServerError::_500, server_config);
+      client->setResponseData(response->getRaw());
+      delete response;
+      return;
+    }
+    case HttpRequest::S_OK: {
+      switch (client->getRequest()->getMethod()) {
+        case Http::UNKNOWN: {
+          response = new HttpResponse(HttpResponseClientError::_400, server_config);
+          client->setResponseData(response->getRaw());
+          delete response;
+          return;
+        }
+        case Http::GET:
+          getHandler(client, server_config);
+          return;
+        case Http::HEAD:
+          headHandler(client, server_config);
+          return;
+        case Http::POST:
+          postHandler(client, server_config);
+          return;
+        case Http::DELETE:
+          deleteHandler(client, server_config);
+          return;
+      }
+    }
+    case HttpRequest::S_CONTINUE: {  // this should not be possible
+      response = new HttpResponse(HttpResponseServerError::_500, server_config);
+      client->setResponseData(response->getRaw());
+      delete response;
+      return;
+    }
+    case HttpRequest::S_BAD_REQUEST: {
+      response = new HttpResponse(HttpResponseClientError::_400, server_config);
+      client->setResponseData(response->getRaw());
+      delete response;
+      return;
+    }
+    case HttpRequest::S_NOT_IMPLEMENTED: {
+      response = new HttpResponse(HttpResponseServerError::_501, server_config);
+      client->setResponseData(response->getRaw());
+      delete response;
+      return;
+    }
+    case HttpRequest::S_HTTP_VERSION_NOT_SUPPORTED: {
+      response = new HttpResponse(HttpResponseServerError::_505, server_config);
+      client->setResponseData(response->getRaw());
+      delete response;
+      return;
+    }
+    case HttpRequest::S_EXPECTATION_FAILED: {
+      response = new HttpResponse(HttpResponseClientError::_417, server_config);
+      client->setResponseData(response->getRaw());
+      delete response;
+      return;
+    }
+  }
+}
+
+void Server::getHandler(Client* client, ServerConfig const* server_config) {
+  Route const* route = server_config->matchRoute(client->getRequest()->getUri());
+
+  HttpResponse* response;
+  if (route->isAllowedMethod(Http::GET)) {
+    if (route->isRedirection()) {
+      response = new HttpResponse(route->getRedirection().first, route->getRedirection().second->getRaw());
+    } else {
+      response = new HttpResponse(HttpResponseSuccess::_200, server_config);
+    }
+  } else {
+    response = new HttpResponse(HttpResponseClientError::_405, server_config);
+  }
+
+  client->setResponseData(response->getRaw());
+  delete response;
+}
+
 // TODO
-void Server::processRequest(Client* client) {}
+void Server::headHandler(Client* client, ServerConfig const* server_config) {
+  HttpResponse response(HttpResponseSuccess::_200, server_config);
+  client->setResponseData(response.getRaw());
+}
+
+// TODO
+void Server::postHandler(Client* client, ServerConfig const* server_config) {
+  HttpResponse response(HttpResponseSuccess::_200, server_config);
+  client->setResponseData(response.getRaw());
+}
+
+// TODO
+void Server::deleteHandler(Client* client, ServerConfig const* server_config) {
+  HttpResponse response(HttpResponseSuccess::_200, server_config);
+  client->setResponseData(response.getRaw());
+}
 
 void Server::timeoutClient(Client* client) {
+  INFO("Timeout client");
   if (client->isReading()) {
-    HttpResponse timeout_response(HttpResponseClientError::_408, NULL);
-    client->setResponseData(timeout_response.getRaw());
-    client->setRead();
+    if (client->getRequest() != NULL) {
+      ServerConfig const* server_config = config_.matchServerConfig(client->getRequest());
+      HttpResponse timeout_response(HttpResponseClientError::_408, server_config);
+
+      client->setResponseData(timeout_response.getRaw());
+      client->setRead();
+    }
+
     updateEvents(client->getSocket(), EVFILT_READ, EV_DELETE);
     updateEvents(client->getSocket(), EVFILT_WRITE, EV_ADD | EV_ENABLE);
-    client->send(0);
   }
 }
 
@@ -174,18 +282,6 @@ void Server::acceptConnection(int socket) {
   updateEvents(connection_socket, EVFILT_READ, EV_ADD | EV_ENABLE);
 }
 
-void Server::updateEvents(int ident, short filter, u_short flags) {  // NOLINT
-  timespec timeout = {1, 0};
-  struct kevent kev;
-  EV_SET(&kev, ident, filter, flags, 0, 0, &timeout);
-  int n = kevent(kq_, &kev, 1, NULL, 0, 0);
-  if (n == 0) {
-    INFO("Kevent timeout");
-  } else if (n < 0) {
-    ERROR(std::strerror(errno));
-  }
-}
-
 Client* Server::findClient(int socket) {
   std::map<int, Client*>::iterator client = clients_.find(socket);
   if (client != clients_.end()) {
@@ -199,4 +295,16 @@ void Server::removeClient(Client* client) {
   closeConnection(socket);
   delete client;
   clients_.erase(socket);
+}
+
+void Server::updateEvents(int ident, short filter, u_short flags) {  // NOLINT
+  timespec timeout = {1, 0};
+  struct kevent kev;
+  EV_SET(&kev, ident, filter, flags, 0, 0, &timeout);
+  int n = kevent(kq_, &kev, 1, NULL, 0, 0);
+  if (n == 0) {
+    INFO("Kevent timeout");
+  } else if (n < 0) {
+    ERROR(std::strerror(errno));
+  }
 }

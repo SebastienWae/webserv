@@ -15,10 +15,11 @@
 
 #include "Client.h"
 #include "Config.h"
+#include "ServerConfig.h"
 
 #define KQ_SIZE 1024
 #define INVALID_SOCKET -1
-#define TIMEOUT 3000
+#define TIMEOUT 30000
 
 class Server {
 public:
@@ -33,7 +34,6 @@ private:
   int const kq_;
   struct kevent events_[KQ_SIZE];
 
-  std::set<std::string> ports_;
   std::vector<int> ports_socket_;
 
   std::map<int, Client*> clients_;
@@ -47,6 +47,12 @@ private:
   void removeClient(Client* client);
 
   void processRequest(Client* client);
+
+  void getHandler(Client* client, ServerConfig const* server_config);
+  void headHandler(Client* client, ServerConfig const* server_config);
+  void postHandler(Client* client, ServerConfig const* server_config);
+  void deleteHandler(Client* client, ServerConfig const* server_config);
+
   void timeoutClient(Client* client);
 };
 

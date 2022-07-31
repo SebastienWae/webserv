@@ -1,5 +1,6 @@
 #ifndef DIRECTORY_H
 #define DIRECTORY_H
+
 #include <dirent.h>
 #include <string.h>
 #include <sys/stat.h>

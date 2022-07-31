@@ -2,13 +2,15 @@
 
 #include <sys/socket.h>
 
+#include <cstring>
 #include <ctime>
 #include <exception>
 
 #include "HttpRequest.h"
 #include "Log.h"
 
-Client::Client(int socket) : socket_(socket), timestamp_(std::time(nullptr)), reading_(true), replied_(false) {}
+Client::Client(int socket)
+    : socket_(socket), timestamp_(std::time(nullptr)), request_(NULL), reading_(true), replied_(false) {}
 
 Client::~Client() {}
 
@@ -26,11 +28,14 @@ void Client::read(unsigned int bytes) throw(std::exception) {
     throw std::exception();
   }
 
-  // TODO
-  if (request_ != 0) {
+  if (request_ != NULL) {
     request_->addChunk(data);
   } else {
     request_ = new HttpRequest(data);
+  }
+
+  if (request_->getStatus() != HttpRequest::S_CONTINUE) {
+    reading_ = false;
   }
 
   delete[] data;
@@ -42,14 +47,18 @@ void Client::send(unsigned int bytes) throw(std::exception) {
   std::string response;
   if (bytes == 0 || bytes >= response_data_.size()) {
     response = response_data_;
+    replied_ = true;
   } else {
     response = response_data_.substr(0, bytes);
   }
   std::size_t len = ::send(socket_, response.c_str(), response.size(), 0);
   if (len < 0) {
+    ERROR(std::strerror(errno));
     throw std::exception();
   }
 }
+
+HttpRequest* Client::getRequest() const { return request_; }
 
 void Client::setResponseData(std::string const& data) { response_data_ = data; }
 void Client::addResponseData(std::string const& data) { response_data_ += data; }

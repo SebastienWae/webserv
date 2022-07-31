@@ -17,6 +17,8 @@ public:
   void read(unsigned int bytes) throw(std::exception);
   void send(unsigned int bytes) throw(std::exception);
 
+  HttpRequest* getRequest() const;
+
   void setResponseData(std::string const& data);
   void addResponseData(std::string const& data);
   std::size_t getResponseSize() const;

@@ -14,16 +14,16 @@ HttpResponse::HttpResponse(HttpResponseInfo::code status_code, ServerConfig cons
     : server_config_(server_config),
       status_code_(HttpResponseInfo::status.at(status_code).first),
       reason_phrase_(HttpResponseInfo::status.at(status_code).second) {
-  headers_["Connection"] = "close";
-  headers_["Content-length"] = "0";
+  headers_["connection"] = "close";
+  headers_["content-length"] = "0";
 }
 
 HttpResponse::HttpResponse(HttpResponseSuccess::code status_code, ServerConfig const* server_config)
     : server_config_(server_config),
       status_code_(HttpResponseSuccess::status.at(status_code).first),
       reason_phrase_(HttpResponseSuccess::status.at(status_code).second) {
-  headers_["Connection"] = "close";
-  headers_["Content-length"] = "0";
+  headers_["connection"] = "close";
+  headers_["content-length"] = "0";
 }
 
 HttpResponse::HttpResponse(HttpResponseSuccess::code status_code, std::string const& body,
@@ -32,70 +32,75 @@ HttpResponse::HttpResponse(HttpResponseSuccess::code status_code, std::string co
       status_code_(HttpResponseSuccess::status.at(status_code).first),
       reason_phrase_(HttpResponseSuccess::status.at(status_code).second),
       body_(body) {
-  headers_["Content-type"] = content_type;
-  headers_["Content-length"] = getContentLenght();
+  headers_["content-type"] = content_type;
+  headers_["content-length"] = getContentLenght();
 }
 
-HttpResponse::HttpResponse(HttpResponseRedir::code status_code, ServerConfig const* server_config)
-    : server_config_(server_config),
-      status_code_(HttpResponseRedir::status.at(status_code).first),
+HttpResponse::HttpResponse(HttpResponseRedir::code status_code, std::string const& location)
+    : status_code_(HttpResponseRedir::status.at(status_code).first),
       reason_phrase_(HttpResponseRedir::status.at(status_code).second) {
-  headers_["Content-type"] = "text/html";
-  headers_["Connection"] = "close";
-  headers_["Content-length"] = "0";
+  headers_["location"] = location;
+  headers_["connection"] = "close";
+  headers_["content-length"] = "0";
 }
 
 HttpResponse::HttpResponse(HttpResponseClientError::code status_code, ServerConfig const* server_config)
     : server_config_(server_config),
       status_code_(HttpResponseClientError::status.at(status_code).first),
       reason_phrase_(HttpResponseClientError::status.at(status_code).second) {
-  std::map<enum HttpResponseClientError::code, std::string> error_pages = server_config->getclienterror();
-  std::map<enum HttpResponseClientError::code, std::string>::const_iterator error_page = error_pages.find(status_code);
-  if (error_page != error_pages.end()) {
-    std::ifstream file(error_page->second);
-    if (file.is_open()) {
-      std::stringstream buffer;
-      buffer << file.rdbuf();
-      body_ = buffer.str();
-      file.close();
+  if (server_config_ != NULL) {
+    std::string error_page = server_config_->getErrorPage(status_code);
+    if (!error_page.empty()) {
+      std::ifstream file(error_page);
+      if (file.is_open()) {
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        body_ = buffer.str();
+        file.close();
+      }
     }
   }
+
   if (body_.empty()) {
     body_ = "<htm><head><title>" + status_code_ + " " + reason_phrase_ + "</title></head><body><center><h1>"
             + status_code_ + " " + reason_phrase_ + "</h1></center></body><html>";
   }
-  headers_["Content-type"] = "text/html";
-  headers_["Connection"] = "close";
-  headers_["Content-length"] = getContentLenght();
+
+  headers_["content-type"] = "text/html";
+  headers_["connection"] = "close";
+  headers_["content-length"] = getContentLenght();
 }
 
 HttpResponse::HttpResponse(HttpResponseServerError::code status_code, ServerConfig const* server_config)
     : server_config_(server_config),
       status_code_(HttpResponseServerError::status.at(status_code).first),
       reason_phrase_(HttpResponseServerError::status.at(status_code).second) {
-  std::map<enum HttpResponseServerError::code, std::string> error_pages = server_config->getservererror();
-  std::map<enum HttpResponseServerError::code, std::string>::const_iterator error_page = error_pages.find(status_code);
-  if (error_page != error_pages.end()) {
-    std::ifstream file(error_page->second);
-    if (file.is_open()) {
-      std::stringstream buffer;
-      buffer << file.rdbuf();
-      body_ = buffer.str();
-      file.close();
+  if (server_config_ != NULL) {
+    std::string error_page = server_config_->getErrorPage(status_code);
+    if (!error_page.empty()) {
+      std::ifstream file(error_page);
+      if (file.is_open()) {
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        body_ = buffer.str();
+        file.close();
+      }
     }
   }
+
   if (body_.empty()) {
     body_ = "<htm><head><title>" + status_code_ + " " + reason_phrase_ + "</title></head><body><center><h1>"
             + status_code_ + " " + reason_phrase_ + "</h1></center></body><html>";
   }
-  headers_["Content-type"] = "text/html";
-  headers_["Connection"] = "close";
-  headers_["Content-length"] = getContentLenght();
+
+  headers_["content-type"] = "text/html";
+  headers_["connection"] = "close";
+  headers_["content-length"] = getContentLenght();
 }
 HttpResponse::~HttpResponse() {}
 
 std::string HttpResponse::getContentLenght() const {
-  std::string::size_type size = body_.size();
+  std::string::size_type size = body_.size() + 2;
   std::ostringstream len;
   len << size;
   return len.str();

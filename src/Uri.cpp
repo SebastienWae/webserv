@@ -217,7 +217,7 @@ Uri::Uri(std::string const& uri) throw(Uri::UriParsingException) : type_(Uri::TY
         }
       }
     }
-  } catch (std::exception) {
+  } catch (std::exception& e) {
     throw UriParsingException();
   }
 }
