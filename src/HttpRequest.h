@@ -1,6 +1,7 @@
 #ifndef HTTPREQUEST_H
 #define HTTPREQUEST_H
 
+#include <ctime>
 #include <exception>
 #include <map>
 #include <stdexcept>
@@ -8,10 +9,20 @@
 #include <vector>
 
 #include "Http.h"
+#include "Uri.h"
 
 class HttpRequest {
 public:
-  enum status { S_NONE, S_OK, S_CONTINUE, S_BAD_REQUEST, S_NOT_IMPLEMENTED, S_HTTP_VERSION_NOT_SUPPORTED };
+  enum status {
+    S_NONE,
+    S_OK,
+    S_CONTINUE,
+    S_BAD_REQUEST,
+    S_NOT_IMPLEMENTED,
+    S_HTTP_VERSION_NOT_SUPPORTED,
+    S_EXPECTATION_FAILED,
+    // S_PAYLOAD_TOO_LARGE  // TODO: ????
+  };
 
   typedef std::map<std::string, enum Http::method> MethodMap;
   static const MethodMap method_map;
@@ -23,28 +34,29 @@ public:
   ~HttpRequest();
 
   enum status getStatus() const;
+  std::time_t const& getTime() const;
   enum Http::method getMethod() const;
-  std::string getUri() const;
-  std::string getVersion() const;
-  std::map<std::string, std::string> getHeaders() const;
-  std::string getBody() const;
-  std::pair<std::string, std::string> getHost();
+  Uri const& getUri() const;
+  std::map<std::string, std::string> const& getHeaders() const;
+  std::string const& getBody() const;
+  std::string getHost() const;
 
 private:
-  enum parse_state {
-    STATE_METHOD,
-    STATE_URI,
-    STATE_VERSION,
-    STATE_NAME,
-    STATE_COLON,
-    STATE_VALUE,
-    STATE_CRLF,
+  enum req_parse_state {
+    S_REQ_METHOD,
+    S_REQ_URI,
+    S_REQ_VERSION,
+    S_REQ_HEADER_NAME,
+    S_REQ_HEADER_SEP,
+    S_REQ_HEADER_VAL,
+    S_REQ_CRLF,
   };
+  enum chunk_parse_state { S_CHK_IDENTIFY, S_CHK_SIZE, S_CHK_EXT, S_CHK_DATA, S_CHK_LAST, S_CHK_TRAILER, S_CHK_CRLF };
 
   enum status status_;
+  std::time_t time_;
   enum Http::method method_;
-  std::string uri_;
-  std::string version_;
+  Uri uri_;
   std::map<std::string, std::string> headers_;
   std::string body_;
 };

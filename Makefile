@@ -8,16 +8,16 @@ OUT_DIR = out
 DEBUG_DIR = debug
 
 CXX = clang++
-WARNING = -Wall -Wextra -Werror 
+WARNING = -Wall -Wextra -Werror
 CXXFLAGS = -O0
+
 
 SRCS = main.cpp \
 	Server.cpp \
-	PollElement.cpp \
+	Client.cpp \
 	Config.cpp \
-	Location.cpp \
 	ServerConfig.cpp \
-	Utils.cpp \
+	Route.cpp \
 	HttpRequest.cpp \
 	HttpResponse.cpp \
 	HttpResponseStatus.cpp \
