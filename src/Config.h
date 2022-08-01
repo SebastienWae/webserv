@@ -25,7 +25,8 @@ public:
   private:
     std::string msg_;
   };
-
+  void checkport(std::string const& port);
+  void checkhostname(std::string const& hostname);
   void parse(std::ifstream& file);
 
   ServerConfig const* matchServerConfig(HttpRequest const* request) const;

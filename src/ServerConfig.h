@@ -1,7 +1,9 @@
 #ifndef SERVERCONFIG_H
 #define SERVERCONFIG_H
 
+#include <fstream>
 #include <map>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -24,6 +26,7 @@ public:
 
   Route* parse(std::string const& line);
   void verify() const throw(ParsingException);
+  void static checkuri(std::string const& uri);
 
   Route const* matchRoute(Uri const& uri) const;
 

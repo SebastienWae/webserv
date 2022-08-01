@@ -32,10 +32,17 @@ Route* ServerConfig::parse(std::string const& line) {
       return NULL;
     }
     if (key == "error") {
-      // TODO: validate path
-      sep = line.find(' ');
+      sep = value.find(' ');
       std::string code = value.substr(0, sep);
       std::string path = value.substr(sep + 1);
+
+      // TODO: validate path
+      // std::ifstream inputFile;
+      // inputFile.open("test.html");
+      // if (inputFile.fail()) {
+      //   throw ParsingException("Error path config");
+      // }
+      // inputFile.close();
 
       int code_i = std::atoi(code.c_str());
       if ((code_i - 400) >= 0 && (code_i - 400) < (418 - 400)) {
@@ -53,6 +60,7 @@ Route* ServerConfig::parse(std::string const& line) {
     }
     if (key == "route") {
       // TODO: check uri
+      checkuri(value);
       for (std::vector<Route*>::iterator it = routes_.begin(); it != routes_.end(); ++it) {
         if ((*it)->getLocation() == value) {
           return *it;
@@ -142,6 +150,21 @@ std::string ServerConfig::getErrorPage(HttpResponseServerError::code code) const
     return error_page->second;
   }
   return "";
+}
+void ServerConfig::checkuri(const std::string& uri) {
+  size_t found;
+  const std::string FORBIDENCHAR = " \n\r\t\f\v";
+  for (size_t i = 0; i < uri.size(); i++) {
+    if (((uri[i] < '0' || uri[i] > '9') && (uri[i] < 'a' || uri[i] > 'z') && (uri[i] < 'A' || uri[i] > 'Z')
+         && uri[i] != '/' && uri[i] != '_')) {
+      throw ServerConfig::ParsingException("Invalid uri");
+    }
+  }
+
+  found = uri.find_first_of(FORBIDENCHAR);
+  if (found != std::string::npos) {
+    throw ServerConfig::ParsingException("Invalid uri");
+  }
 }
 
 std::size_t ServerConfig::getMaxBodySize() const { return max_body_size_; }

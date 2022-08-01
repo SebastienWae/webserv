@@ -48,13 +48,15 @@ void Config::parse(std::ifstream& file) {  // NOLINT
             std::string hostname;
             std::string port;
             if (sep == std::string::npos) {
-              hostname = line.substr(1, -2);
+              hostname = line.substr(1, line.size() - 2);
               port = "80";
             } else {
               hostname = line.substr(1, sep - 1);
               port = line.substr(sep + 1, line.size() - sep - 2);
             }
             // TODO: verify hostname & port
+            checkport(port);
+            checkhostname(hostname);
             for (std::vector<ServerConfig*>::iterator it = servers_.begin(); it != servers_.end(); ++it) {
               if ((*it)->getHostname() == hostname && (*it)->getPort() == port) {
                 current_server_config = *it;
@@ -132,4 +134,102 @@ std::set<std::string> Config::getPorts() const {
     ports.insert((*it)->getPort());
   }
   return ports;
+}
+
+void Config::checkport(std::string const& port) {
+  if (port.size() > 5) {
+    throw Config::ParsingException("Too long port");
+  }
+
+  if (port.size() == 1) {
+    if (port[0] > '9' || port[0] < '0') {
+      throw Config::ParsingException("Invalid port");
+    }
+  } else if (port.size() == 2) {
+    if (port[0] > '9' || port[0] < '0' || port[1] > '9' || port[1] < '0') {
+      throw Config::ParsingException("Invalid port");
+    }
+  } else if (port.size() == 3) {
+    if (port[0] > '9' || port[0] < '0' || port[1] > '9' || port[1] < '0' || port[2] > '9' || port[2] < '0') {
+      throw Config::ParsingException("Invalid port");
+    }
+  } else if (port.size() == 4) {
+    if (port[0] > '9' || port[0] < '0' || port[1] > '9' || port[1] < '0' || port[2] > '9' || port[2] < '0'
+        || port[3] > '9' || port[3] < '0') {
+      throw Config::ParsingException("Invalid port");
+    }
+  } else if (port.size() == 5) {
+    if (port[0] > '9' || port[0] < '0' || port[1] > '9' || port[1] < '0' || port[2] > '9' || port[2] < '0'
+        || port[3] > '9' || port[3] < '0' || port[4] > '9' || port[4] < '0') {
+      throw Config::ParsingException("Invalid port");
+    }
+    if (port[0] == '6' && port[1] > '5') {
+      throw Config::ParsingException("Invalid port");
+    }
+    if (port[0] == '6' && port[1] == '5' && port[2] > '5') {
+      throw Config::ParsingException("Invalid port");
+    }
+    if (port[0] == '6' && port[1] == '5' && port[2] == '5' && port[3] > '3') {
+      throw Config::ParsingException("Invalid port");
+    }
+    if (port[0] == '6' && port[1] == '5' && port[2] == '5' && port[3] == '3' && port[4] > '5') {
+      throw Config::ParsingException("Invalid port");
+    }
+  }
+}
+
+void Config::checkhostname(const std::string& hostname) {
+  std::vector<std::string> tmp;
+  size_t start = 0;
+  size_t end = 0;
+  size_t find = 0;
+  size_t count = 0;
+  while (find != std::string::npos) {
+    find = hostname.find('.', find);
+    if (find != std::string::npos) {
+      count++;
+      find += 1;
+    }
+  }
+  if (count == 3) {
+    for (size_t i = 0; i < hostname.size(); i++) {
+      end = i;
+      if ((hostname.compare(i, strlen("."), ".")) == 0) {
+        tmp.push_back(hostname.substr(start, end - start));
+        start = end + 1;
+      }
+    }
+    end++;
+    tmp.push_back(hostname.substr(start, end - start));
+    for (size_t i = 0; i < tmp.size(); i++) {
+      for (size_t j = 0; j < tmp[i].size(); j++) {
+        if (tmp[i][j] > '9' || tmp[i][j] < '0') {
+          throw Config::ParsingException("Invalid IP");
+        }
+      }
+      if (tmp[i][0] > '2' || tmp[i][0] < '0') {
+        throw Config::ParsingException("Invalid IP");
+      }
+      if (tmp[i][0] == '2' && (tmp[i][1] > '5')) {
+        throw Config::ParsingException("Invalid IP");
+      }
+      if (tmp[i][0] == '2' && (tmp[i][1] == '5') && (tmp[i][2] > '5')) {
+        throw Config::ParsingException("Invalid IP");
+      }
+    }
+  } else if (!hostname.empty()) {
+    {
+      std::string::size_type sep = hostname.find('.');
+      size_t found = std::string::npos;
+      std::string dat = hostname.substr(sep, hostname.size());
+      if (dat.compare(0, strlen(".com"), ".com") != 0) {
+        throw Config::ParsingException("Invalid IP");
+      }
+      const std::string FORBIDENCHAR = " \n\r\t\f\v";
+      found = hostname.find_first_of(FORBIDENCHAR);
+      if (found != std::string::npos) {
+        throw Config::ParsingException("Invalid IP");
+      }
+    }
+  }
 }
