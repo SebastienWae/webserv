@@ -23,7 +23,8 @@ SRCS = main.cpp \
 	HttpResponseStatus.cpp \
 	Uri.cpp \
 	File.cpp \
-	Directory.cpp
+	Directory.cpp \
+	Cgi.cpp
 SRCS_PATH = $(addprefix $(SRC_DIR)/,$(SRCS))
 SRCS_PATH_BONUS = $(addprefix $(SRC_DIR)/,$(SRCS_BONUS))
 OBJS = $(addprefix $(OUT_DIR)/,$(SRCS_PATH:%.cpp=%.o))
