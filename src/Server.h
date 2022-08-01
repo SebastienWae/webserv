@@ -2,6 +2,7 @@
 #define SERVER_H
 
 #include <netdb.h>
+#include <sys/event.h>
 #include <sys/time.h>
 #include <sys/types.h>
 
@@ -14,8 +15,6 @@
 #define MAX_PENDING_CONNECTIONS 50   // TO SET
 #define BUFSIZE_CLIENT_REQUEST 4096  // TO SET
 
-/* to use for multiple ports => multithread */
-// void* threadWrapper(void* current);
 class Server {
 public:
   Server(Config& servers_list);
@@ -54,15 +53,15 @@ public:
   public:
     virtual char const* what() const throw();
   };
-  // static void sendingMessageBackToClient(int event_fd, HttpResponse const& response);
-  static void sendingMessageBackToClient(int event_fd);
+  static std::string getClientPort(char buffer[BUFSIZE_CLIENT_REQUEST]);
+  const ServerConfig* getCurrentConfig(std::string& current_port);
+  void sendingMessageBackToClient(int event_fd);
   class ClientSendResponseException : public ServerCoreNonFatalException {
   public:
     virtual char const* what() const throw();
   };
 
   ServerConfig const* getConfig() const;
-  /* TO DO : Setter and Getter to put these variables in private */
 
   void closeListeners();
 
@@ -75,7 +74,7 @@ private:
 
   /* Listener variables */
   std::vector<int> listeners;
-  std::vector<ServerConfig> configs;  // faire struct avec listener + config associee
+  std::vector<ServerConfig> configs;
 
   /* Client request variables */
   int new_socket;
@@ -84,7 +83,6 @@ private:
   char remoteIP[INET6_ADDRSTRLEN];
 
   Config servers_list_;
-  // ServerConfig const* config_;
 };
 
 #endif

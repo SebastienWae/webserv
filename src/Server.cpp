@@ -21,10 +21,7 @@
 #include "HttpResponseStatus.h"
 #include "ServerConfig.h"
 
-Server::Server(Config& servers_list)
-    : servers_list_(servers_list){
-
-    };
+Server::Server(Config& servers_list) : servers_list_(servers_list){};
 
 Server::~Server(){};
 
@@ -80,7 +77,6 @@ void Server::createListenersSocket(ServerConfig const& server) {
   }
   freeaddrinfo(address_info);
   if (p == NULL) {
-    std::cerr << strerror(errno);
     std::cerr << "Bind failed" << std ::endl;
     throw ListenerException();
   }
@@ -114,32 +110,30 @@ void Server::getClientRequest(int event_fd) {
             << std::endl;
 }
 
-// void Server::sendingMessageBackToClient(int event_fd, HttpResponse const& response) {
-//   char buffer[BUFSIZE_CLIENT_REQUEST];
-//   // if (fcntl(event_fd, F_SETFL, O_NONBLOCK) == -1) {
-//   //   std::cerr << "Cannot set new socket to non blocking." << std ::endl;
-//   //   throw ListenerException();
-//   // }
-//   long int ret_recv = read(event_fd, buffer, BUFSIZE_CLIENT_REQUEST);
+const ServerConfig* Server::getCurrentConfig(std::string& current_port) {
+  for (std::vector<ServerConfig>::const_iterator it = servers_list_.getServerConfig()->begin();
+       it != servers_list_.getServerConfig()->end(); ++it) {
+    if (current_port == it->getport()) {
+      return (&(*it));
+    }
+  }
+  std::cout << "ERROR : cannot find config for port " << current_port << std::endl;
+  return (NULL);
+}
 
-//   if (ret_recv == 0) {
-//     std::cerr << std::endl << "Error: Connection closed by client" << std::endl;
-//     return;
-//   }
-//   if (ret_recv < 0) {
-//     std::cerr << std::endl << "Error: No byte to read" << std::endl;
-//     return;
-//   }
-//   buffer[ret_recv] = '\0';
-//   std::cout << "Received from client : " << std ::endl << std::endl << buffer << std::endl;
-//   std::string raw_response = response.getRaw();
-//   std::cout << "Response sent to client : " << raw_response << std::endl << std::endl;
-//   send(event_fd, (raw_response + "ok").c_str(), raw_response.length() + 2, 0);
-//   std::cout << std::endl << "*** Message sent to client ***" << std::endl;
-// }
+std::string Server::getClientPort(char buffer[BUFSIZE_CLIENT_REQUEST]) {
+  std::string str_buffer = static_cast<std::string>(buffer);
+  std::string::size_type host_begin = str_buffer.find("Host");
+  std::string::size_type host_end = str_buffer.find('\n', host_begin);
+  std::string host = str_buffer.substr(host_begin, host_end - host_begin);
+  size_t begin_port = host.find_last_of(':');
+  std::string port = host.substr(begin_port + 1);
+  return (port.substr(0, port.length() - 1));
+}
 
-void Server::sendingMessageBackToClient(int event_fd, ServerConfig* cc) {
+void Server::sendingMessageBackToClient(int event_fd) {
   char buffer[BUFSIZE_CLIENT_REQUEST];
+  std::string current_port;
 
   long int ret_recv = read(event_fd, buffer, BUFSIZE_CLIENT_REQUEST);
 
@@ -153,11 +147,14 @@ void Server::sendingMessageBackToClient(int event_fd, ServerConfig* cc) {
   }
   buffer[ret_recv] = '\0';
   std::cout << "Received from client : " << std ::endl << std::endl << buffer << std::endl;
-
+  current_port = getClientPort(buffer);
+  const ServerConfig* cc = getCurrentConfig(current_port);
   HttpResponse r(HttpResponseSuccess::_200, cc);
+  std::cout << cc->getport() << std::endl;
   send(event_fd, r.getRaw().c_str(), r.getRaw().size(), 0);
   std::cout << std::endl << "*** Message sent to client ***" << std::endl;
 }
+
 void Server::closeListeners() {
   for (std::vector<int>::const_iterator it = listeners.begin(); it != listeners.end(); it++) {
     close(*it);
@@ -170,7 +167,6 @@ void* Server::run() {
          it != servers_list_.getServerConfig()->end(); ++it) {
       try {
         createListenersSocket(*it);
-        std::cout << "Opening Port " << it->getport() << std::endl;
       } catch (ServerCoreNonFatalException& e) {
         std::cout << "Cannot listen on port " << it->getport() << std::endl;
       }
@@ -178,12 +174,11 @@ void* Server::run() {
     kq = kqueue();
     struct kevent change_event[listeners.size()];
     struct timespec timeout = {0, 0};
-
     for (std::vector<int>::iterator it = listeners.begin(); it != listeners.end(); ++it) {
       EV_SET(&change_event[std::distance(listeners.begin(), it)], *it, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0,
-             &configs[std::distance(listeners.begin(), it)]);  // passer udata
+             &configs[std::distance(listeners.begin(), it)]);
     }
-    if (kevent(kq, change_event, listeners.size(), NULL, 0, &timeout) == -1) {
+    if (kevent(kq, change_event, listeners.size(), NULL, 0, &timeout) == -1) {  // NOLINT
       perror("kevent");
       throw ServerCoreFatalException();
     }
@@ -196,15 +191,13 @@ void* Server::run() {
         }
         for (int i = 0; i < new_events; i++) {
           int event_fd = event[i].ident;  // NOLINT
-          ServerConfig* cc = event[i].udata;
           if ((event[i].flags & EV_EOF) != 0) {
             printf("Client has disconnected");
             close(event_fd);
           } else if (std::find(listeners.begin(), listeners.end(), event_fd) != listeners.end()) {
             getClientRequest(event_fd);
           } else if ((event[i].filter & EVFILT_READ) != 0) {
-            // sendingMessageBackToClient(event_fd, resp);
-            sendingMessageBackToClient(event_fd, cc);
+            sendingMessageBackToClient(event_fd);
             close(event_fd);
           }
         }
