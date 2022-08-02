@@ -1,5 +1,6 @@
 #include "Server.h"
 
+#include <iostream>
 #include <vector>
 
 #include "Http.h"
@@ -83,6 +84,7 @@ void Server::start() {  // NOLINT
           } else {
             removeClient(client);
           }
+          std::cerr << e.what() << std::endl;
         }
       }
     }
