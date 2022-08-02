@@ -12,6 +12,7 @@ File::File(std::string const& path) : path_(path), input_stream_(NULL), output_s
   stat_.st_ctimespec.tv_sec = 0;
   stat_.st_ctimespec.tv_nsec = 0;
   stat();
+  initMimeFileType();
 }
 
 File::~File() {
@@ -131,6 +132,20 @@ std::string File::getContent() {
   return "";
 }
 
+std::string File::getMimeType() {
+  std::string::size_type spot = path_.find_last_of('.');
+  if (spot != std::string::npos) {
+    std::string ext = path_.substr(spot, path_.length());
+    for (std::vector<std::pair<std::string const, std::string const> >::iterator it = mimeTypes.begin();
+         it != mimeTypes.end(); it++) {
+      if (ext == it->first) {
+        return (it->second);
+      }
+    }
+  }
+  return ("application/octet-stream");
+}
+
 std::ifstream* File::getIStream() {
   if (stat() || stat_.st_ctimespec.tv_sec != last_time.tv_sec || stat_.st_ctimespec.tv_nsec != last_time.tv_nsec) {
     if (isReadable() && getType() == REG) {
@@ -161,4 +176,75 @@ std::ofstream* File::getOStream() {
     output_stream_ = NULL;
   }
   return NULL;
+}
+
+void File::initMimeFileType() {
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".aac", "audio/aac"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".avi ", "video/x-msvideo"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".bin", "application/octet-stream"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".bmp", "image/bmp"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".bz", "application/x-bzip"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".bz2", "application/x-bzip2"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".csh", "application/x-csh"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".css", "text/css"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".csv", "text/csv"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".doc", "application/msword"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(
+      ".docx ", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".gif", "image/gif"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".htm", "text/html"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".html", "text/html"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".ico", "image/x-icon"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".jar", "application/java-archive"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".jpeg", "image/jpeg"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".jpg", "image/jpeg"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".js", "application/javascript"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".json", "application/json"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".mid", "audio/midi"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".midi", "audio/midi"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".mpeg", "video/mpeg"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".mp3", "audio/mpeg"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".mp4", "video/mpeg"));
+  mimeTypes.push_back(
+      std::pair<std::string const, std::string>(".odp ", "application/vnd.oasis.opendocument.presentation"));
+  mimeTypes.push_back(
+      std::pair<std::string const, std::string>(".ods", "application/vnd.oasis.opendocument.spreadsheet"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".odt", "application/vnd.oasis.opendocument.text"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".oga", "audio/ogg"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".ogv", "video/ogg"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".ogx", "application/ogg"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".otf", "font/otf"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".png", "image/png"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".pdf", "application/pdf"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".ppt", "application/vnd.ms-powerpoint"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(
+      ".pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".rar", "application/x-rar-compressed"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".rtf", "application/rtf"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".sh", "application/x-sh"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".svg", "image/svg+xml"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".swf", "application/x-shockwave-flash"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".tar", "application/x-tar"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".tif", "image/tiff"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".tiff", "image/tiff"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".ts", "application/typescript"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".ttf", "font/ttf"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".txt", "text/plain"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".vsd", "application/vnd.visio"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".wav", "audio/x-wav"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".weba", "audio/webm"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".webm", "video/webm"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".webp ", "image/webp"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".woff", "font/woff"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".woff2", "font/woff2"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".xhtml", "application/xhtml+xml"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".xls", "application/vnd.ms-excel"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(
+      ".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".xml", "application/xml"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".xul", "application/vnd.mozilla.xul+xml"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".zip", "application/zip"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".3gp", "video/3gpp"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".3g2", "video/3gpp2"));
+  mimeTypes.push_back(std::pair<std::string const, std::string>(".7z", "	application/x-7z-compressed"));
 }
