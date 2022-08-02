@@ -86,7 +86,10 @@ HttpResponse::HttpResponse(HttpResponseServerError::code status_code, ServerConf
 HttpResponse::~HttpResponse() {}
 
 std::string HttpResponse::getContentLenght() const {
-  std::string::size_type size = body_.size() + 2;
+  std::string::size_type size = body_.size();
+  if (size > 0) {
+    size += 2;
+  }
   std::ostringstream len;
   len << size;
   return len.str();
