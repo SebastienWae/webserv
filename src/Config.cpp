@@ -5,16 +5,16 @@
 #include <string>
 #include <vector>
 
+#include "File.h"
 #include "Log.h"
 #include "ServerConfig.h"
 
 Config::Config(std::string const& config_path) {
   INFO("Opening config file: " + config_path)
 
-  std::ifstream file(config_path);
-  if (file.is_open()) {
-    parse(file);
-    file.close();
+  File file(config_path);
+  if (file.getType() == File::REG && file.isReadable() && file.getIStream() != NULL) {
+    parse(file.getIStream());
   } else {
     throw ParsingException("Cannot open config file: " + config_path);
   }
@@ -30,11 +30,11 @@ Config::ParsingException::ParsingException(std::string const& msg) throw() : msg
 Config::ParsingException::~ParsingException() throw() {}
 char const* Config::ParsingException::what() const throw() { return msg_.c_str(); }
 
-void Config::parse(std::ifstream& file) {  // NOLINT
+void Config::parse(std::ifstream* file) {  // NOLINT
   enum parse_state state = S_NONE;
   ServerConfig* current_server_config = NULL;
   Route* current_route = NULL;
-  for (std::string line; std::getline(file, line);) {  // NOLINT
+  for (std::string line; std::getline(*file, line);) {  // NOLINT
     switch (state) {
       case S_NONE: {
         if (line.empty()) {

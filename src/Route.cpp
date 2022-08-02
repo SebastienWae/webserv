@@ -1,17 +1,28 @@
 #include "Route.h"
 
+#include <cctype>
 #include <string>
 
 #include "Http.h"
 #include "HttpResponseStatus.h"
 
-Route::Route(std::string const& location) : location_(location), directory_listing_(false) {
+Route::Route(std::string const& location)
+    : location_(location), root_(NULL), directory_listing_(false), directory_page_(NULL), upload_store_(NULL) {
   redirection_.second = NULL;
 }
 
 Route::~Route() {
   if (redirection_.second != NULL) {
     delete redirection_.second;
+  }
+  if (root_ != NULL) {
+    delete root_;
+  }
+  if (directory_page_ != NULL) {
+    delete directory_page_;
+  }
+  if (upload_store_ != NULL) {
+    delete upload_store_;
   }
 }
 
@@ -26,22 +37,35 @@ void Route::parse(std::string const& line) {  // NOLINT
     std::string value = line.substr(sep + 1);
 
     if (key == "root") {
-      // TODO: validate path
-
-      root_ = value;
+      File* root_dir = new File(value);
+      if (root_dir->getType() == File::DIR && root_dir->isReadable()) {
+        root_ = root_dir;
+      } else {
+        delete root_dir;
+        throw ParsingException("Config file error at line: " + line);
+      }
     } else if (key == "directory_page") {
-      // TODO: validate path
-      directory_page_ = value;
+      File* page = new File(value);
+      if (page->getType() == File::REG && page->isReadable() && page->getIStream() != NULL) {
+        directory_page_ = page;
+      } else {
+        delete page;
+        throw ParsingException("Config file error at line: " + line);
+      }
     } else if (key == "directory_listing") {
-      // TODO: validate path
       if (value == "on") {
         directory_listing_ = true;
       } else if (value != "off") {
         throw ParsingException("Config file error at line: " + line);
       }
     } else if (key == "upload_store") {
-      // TODO: validate path
-      upload_store_ = value;
+      File* store = new File(value);
+      if (store->getType() == File::DIR && store->isReadable() && store->isWritable()) {
+        directory_page_ = store;
+      } else {
+        delete store;
+        throw ParsingException("Config file error at line: " + line);
+      }
     } else if (key == "allow") {
       while (std::string::size_type pos = value.find(',')) {
         if (pos == std::string::npos) {
@@ -93,13 +117,27 @@ void Route::parse(std::string const& line) {  // NOLINT
         throw ParsingException("Config file error at line: " + line);
       }
     } else if (key == "cgi") {
-      // TODO: validate path & ext
       sep = line.find(' ');
       std::string ext = value.substr(0, sep);
-      std::string path = value.substr(sep + 1);
-      if (cgi_.find(ext) == cgi_.end()) {
-        std::pair<std::string, std::string> new_cgi(ext, path);
-        cgi_.insert(new_cgi);
+      if (!ext.empty() && ext.at(0) == '.') {
+        for (std::string::iterator it = ext.begin() + 1; it != ext.end(); ++it) {
+          if (std::isalnum(*it) == 0) {
+            throw ParsingException("Config file error at line: " + line);
+          }
+        }
+        std::string path = value.substr(sep + 1);
+        if (cgi_.find(ext) == cgi_.end()) {
+          File* cgi_dir = new File(path);
+          if (cgi_dir->getType() == File::DIR && cgi_dir->isReadable() && cgi_dir->isExecutable()) {
+            std::pair<std::string, File*> new_cgi(ext, cgi_dir);
+            cgi_.insert(new_cgi);
+          } else {
+            delete cgi_dir;
+            throw ParsingException("Config file error at line: " + line);
+          }
+        } else {
+          throw ParsingException("Config file error at line: " + line);
+        }
       } else {
         throw ParsingException("Config file error at line: " + line);
       }
@@ -112,18 +150,18 @@ void Route::parse(std::string const& line) {  // NOLINT
 }
 
 void Route::verify() const {
-  if (root_.empty()) {
+  if (root_ == NULL) {
     throw ParsingException("All routes must have a root directory");
   }
 }
 
 std::string const& Route::getLocation() const { return location_; }
 
-std::string const& Route::getRoot() const { return root_; }
+File* Route::getRoot() const { return root_; }
 
-std::string const& Route::getDirectoryPage() const { return directory_page_; }
+File* Route::getDirecoryPage() const { return directory_page_; }
 
-std::string const& Route::getUploadStore() const { return upload_store_; }
+File* Route::getUploadStore() const { return upload_store_; }
 
 bool Route::isRedirection() const { return redirection_.second != NULL; }
 
@@ -135,7 +173,7 @@ bool Route::isAllowedMethod(enum Http::method method) const {
 }
 
 // TODO
-std::string Route::matchCGI(std::string const& file) const {
+File* Route::matchCGI(std::string const& file) const {
   (void)file;
-  return "";
+  return NULL;
 }

@@ -22,12 +22,12 @@ int main(int argc, char** argv) {
     } else {
       config_path = argv[1];
     }
-    // try {
-    Config config(config_path);
-    run(config);
-    // } catch (std::exception& e) {
-    // std::cerr << e.what() << std::endl;
-    // }
+    try {
+      Config config(config_path);
+      run(config);
+    } catch (std::exception& e) {
+      std::cerr << e.what() << std::endl;
+    }
   } else {
     std::cout << "usage: " << argv[0] << " [/path/to/config/file.conf]" << std::endl;
   }
