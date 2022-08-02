@@ -6,6 +6,7 @@
 
 #include <fstream>
 #include <string>
+#include <vector>
 
 class File {
 public:
@@ -29,6 +30,9 @@ public:
 
   std::string getContent();
 
+  std::string getMimeType();
+  void initMimeFileType();
+
   std::ifstream* getIStream();
   std::ofstream* getOStream();
 
@@ -41,6 +45,8 @@ private:
   struct timespec last_time;
 
   bool stat();
+
+  std::vector<std::pair<std::string const, std::string const> > mimeTypes;
 };
 
 #endif
