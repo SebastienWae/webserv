@@ -21,7 +21,7 @@ const HttpRequest::MethodMap HttpRequest::method_map = initMethodMap();
 
 // TODO: check request size
 // NOLINTNEXTLINE
-HttpRequest::HttpRequest(std::string const& raw) : status_(S_NONE), time_(std::time(nullptr)), method_(Http::UNKNOWN) {
+HttpRequest::HttpRequest(std::string const& raw) : status_(S_NONE), method_(Http::UNKNOWN) {
   enum req_parse_state state = S_REQ_METHOD;
   std::string header_name;
   std::string::const_iterator last_token;
@@ -209,8 +209,6 @@ bool HttpRequest::addChunk(std::string const& chunk) {
 HttpRequest::~HttpRequest() {}
 
 enum HttpRequest::status HttpRequest::getStatus() const { return status_; }
-
-std::time_t const& HttpRequest::getTime() const { return time_; }
 
 enum Http::method HttpRequest::getMethod() const { return method_; }
 

@@ -1,7 +1,6 @@
 #ifndef HTTPREQUEST_H
 #define HTTPREQUEST_H
 
-#include <ctime>
 #include <exception>
 #include <map>
 #include <stdexcept>
@@ -34,7 +33,6 @@ public:
   ~HttpRequest();
 
   enum status getStatus() const;
-  std::time_t const& getTime() const;
   enum Http::method getMethod() const;
   Uri const& getUri() const;
   std::map<std::string, std::string> const& getHeaders() const;
@@ -54,7 +52,6 @@ private:
   enum chunk_parse_state { S_CHK_IDENTIFY, S_CHK_SIZE, S_CHK_EXT, S_CHK_DATA, S_CHK_LAST, S_CHK_TRAILER, S_CHK_CRLF };
 
   enum status status_;
-  std::time_t time_;
   enum Http::method method_;
   Uri uri_;
   std::map<std::string, std::string> headers_;
