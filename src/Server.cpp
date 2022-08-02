@@ -2,7 +2,10 @@
 
 #include <vector>
 
+#include "Directory.h"
+#include "File.h"
 #include "Http.h"
+#include "HttpRequest.h"
 #include "HttpResponse.h"
 #include "HttpResponseStatus.h"
 #include "Log.h"
@@ -156,14 +159,31 @@ void Server::processRequest(Client* client) {
 }
 
 void Server::getHandler(Client* client, ServerConfig const* server_config) {
-  Route const* route = server_config->matchRoute(client->getRequest()->getUri());
+  HttpRequest const* req = client->getRequest();
+  Route const* route = server_config->matchRoute(req->getUri());
 
   HttpResponse* response;
   if (route->isAllowedMethod(Http::GET)) {
     if (route->isRedirection()) {
       response = new HttpResponse(route->getRedirection().first, route->getRedirection().second->getRaw());
     } else {
-      response = new HttpResponse(HttpResponseSuccess::_200, server_config);
+      File* file = route->matchFile(req->getUri().getPath());
+      if (file->isReadable()) {
+        if (file->getType() == File::REG) {
+          response = new HttpResponse(HttpResponseSuccess::_200, file->getContent(), "text/html", server_config);
+        } else if (file->getType() == File::DIR) {
+          response
+              = new HttpResponse(HttpResponseSuccess::_200,
+                                 Directory::html(file->getPath(), server_config->getHost() + req->getUri().getPath()),
+                                 "text/html", server_config);
+        } else {
+          // wrong type
+          response = new HttpResponse(HttpResponseSuccess::_200, server_config);
+        }
+      } else {
+        // wrong perm
+        response = new HttpResponse(HttpResponseSuccess::_200, server_config);
+      }
     }
   } else {
     response = new HttpResponse(HttpResponseClientError::_405, server_config);

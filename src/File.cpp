@@ -118,6 +118,8 @@ bool File::stat() {
 
 bool File::exist() { return stat(); }
 
+std::string const& File::getPath() const { return path_; }
+
 bool File::isReadable() {
   if (stat()) {
     return (stat_.st_mode & S_IRUSR) != 0;
@@ -198,9 +200,9 @@ struct timespec File::getCreation() {
 }
 
 std::string File::getContent() {
-  if (stat()) {
+  if (stat() && getType() == REG && isReadable()) {
     std::stringstream buffer;
-    buffer << input_stream_->rdbuf();
+    buffer << getIStream()->rdbuf();
     return buffer.str();
   }
   return "";

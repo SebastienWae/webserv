@@ -141,6 +141,8 @@ std::string const& ServerConfig::getHostname() const { return hostname_; }
 
 std::string const& ServerConfig::getPort() const { return port_; }
 
+std::string ServerConfig::getHost() const { return "http://" + hostname_ + (port_ != "80" ? ":" + port_ : ""); }
+
 File* ServerConfig::getErrorPage(HttpResponseClientError::code code) const {
   std::map<HttpResponseClientError::code, File*>::const_iterator error_page = client_errors_pages_.find(code);
   if (error_page != client_errors_pages_.end()) {
