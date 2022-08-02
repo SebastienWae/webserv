@@ -13,7 +13,7 @@
 
 class Directory {
 public:
-  std::string static html(std::string const &path);
+  std::string static html(std::string const &path, std::string const &url);
   class PathException : public std::exception {
   public:
     virtual const char *what(void) const throw();
