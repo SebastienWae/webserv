@@ -21,7 +21,7 @@ public:
     S_NOT_IMPLEMENTED,
     S_HTTP_VERSION_NOT_SUPPORTED,
     S_EXPECTATION_FAILED,
-    S_PAYLOAD_TOO_LARGE  // TODO: ????
+    // S_PAYLOAD_TOO_LARGE  // TODO: ????
   };
 
   typedef std::map<std::string, enum Http::method> MethodMap;
@@ -39,6 +39,7 @@ public:
   Uri const& getUri() const;
   std::map<std::string, std::string> const& getHeaders() const;
   std::string const& getBody() const;
+  std::string getHost() const;
 
 private:
   enum req_parse_state {
