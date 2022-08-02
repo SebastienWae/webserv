@@ -8,8 +8,6 @@
 #include <string>
 #include <vector>
 
-std::vector<std::pair<std::string const, std::string const> > initMimeFileType();
-
 class File {
 public:
   enum type { NONE, FIFO, CHR, DIR, BLK, REG, LNK, SOCK, WHT };
