@@ -15,6 +15,14 @@ ServerConfig::~ServerConfig() {
   for (std::vector<Route*>::iterator it = routes_.begin(); it != routes_.end(); ++it) {
     delete *it;
   }
+  for (std::map<HttpResponseClientError::code, File*>::iterator it = client_errors_pages_.begin();
+       it != client_errors_pages_.end(); ++it) {
+    delete it->second;
+  }
+  for (std::map<HttpResponseServerError::code, File*>::iterator it = server_errors_pages_.begin();
+       it != server_errors_pages_.end(); ++it) {
+    delete it->second;
+  }
 }
 
 ServerConfig::ParsingException::ParsingException(std::string const& msg) throw() : msg_(msg) {}
@@ -36,31 +44,28 @@ Route* ServerConfig::parse(std::string const& line) {
       std::string code = value.substr(0, sep);
       std::string path = value.substr(sep + 1);
 
-      // TODO: validate path
-      // std::ifstream inputFile;
-      // inputFile.open("test.html");
-      // if (inputFile.fail()) {
-      //   throw ParsingException("Error path config");
-      // }
-      // inputFile.close();
-
-      int code_i = std::atoi(code.c_str());
-      if ((code_i - 400) >= 0 && (code_i - 400) < (418 - 400)) {
-        std::pair<HttpResponseClientError::code, std::string> page(
-            static_cast<HttpResponseClientError::code>(code_i - 400), path);
-        client_errors_pages_.insert(page);
-        return NULL;
-      }
-      if ((code_i - 500) >= 0 && (code_i - 500) < (506 - 500)) {
-        std::pair<HttpResponseServerError::code, std::string> page(
-            static_cast<HttpResponseServerError::code>(code_i - 500), path);
-        server_errors_pages_.insert(page);
-        return NULL;
+      File* file = new File(path);
+      if (file->getType() == File::REG && file->isReadable() && file->getIStream() != NULL) {
+        int code_i = std::atoi(code.c_str());
+        if ((code_i - 400) >= 0 && (code_i - 400) < (418 - 400)) {
+          std::pair<HttpResponseClientError::code, File*> page(static_cast<HttpResponseClientError::code>(code_i - 400),
+                                                               file);
+          client_errors_pages_.insert(page);
+          return NULL;
+        } else if ((code_i - 500) >= 0 && (code_i - 500) < (506 - 500)) {
+          std::pair<HttpResponseServerError::code, File*> page(static_cast<HttpResponseServerError::code>(code_i - 500),
+                                                               file);
+          server_errors_pages_.insert(page);
+          return NULL;
+        } else {
+          delete file;
+        }
+      } else {
+        delete file;
       }
     }
     if (key == "route") {
       // TODO: check uri
-      checkuri(value);
       for (std::vector<Route*>::iterator it = routes_.begin(); it != routes_.end(); ++it) {
         if ((*it)->getLocation() == value) {
           return *it;
@@ -86,7 +91,7 @@ void ServerConfig::verify() const throw(ParsingException) {
   }
 }
 
-Route const* ServerConfig::matchRoute(Uri const& uri) const {  // NOLINT
+Route* ServerConfig::matchRoute(Uri const& uri) const {  // NOLINT
   int max = 0;
   Route* match = NULL;
   Route* defaut_match = NULL;
@@ -136,35 +141,20 @@ std::string const& ServerConfig::getHostname() const { return hostname_; }
 
 std::string const& ServerConfig::getPort() const { return port_; }
 
-std::string ServerConfig::getErrorPage(HttpResponseClientError::code code) const {
-  std::map<HttpResponseClientError::code, std::string>::const_iterator error_page = client_errors_pages_.find(code);
+File* ServerConfig::getErrorPage(HttpResponseClientError::code code) const {
+  std::map<HttpResponseClientError::code, File*>::const_iterator error_page = client_errors_pages_.find(code);
   if (error_page != client_errors_pages_.end()) {
     return error_page->second;
   }
-  return "";
+  return NULL;
 }
 
-std::string ServerConfig::getErrorPage(HttpResponseServerError::code code) const {
-  std::map<HttpResponseServerError::code, std::string>::const_iterator error_page = server_errors_pages_.find(code);
+File* ServerConfig::getErrorPage(HttpResponseServerError::code code) const {
+  std::map<HttpResponseServerError::code, File*>::const_iterator error_page = server_errors_pages_.find(code);
   if (error_page != server_errors_pages_.end()) {
     return error_page->second;
   }
-  return "";
-}
-void ServerConfig::checkuri(const std::string& uri) {
-  size_t found;
-  const std::string FORBIDENCHAR = " \n\r\t\f\v";
-  for (size_t i = 0; i < uri.size(); i++) {
-    if (((uri[i] < '0' || uri[i] > '9') && (uri[i] < 'a' || uri[i] > 'z') && (uri[i] < 'A' || uri[i] > 'Z')
-         && uri[i] != '/' && uri[i] != '_')) {
-      throw ServerConfig::ParsingException("Invalid uri");
-    }
-  }
-
-  found = uri.find_first_of(FORBIDENCHAR);
-  if (found != std::string::npos) {
-    throw ServerConfig::ParsingException("Invalid uri");
-  }
+  return NULL;
 }
 
 std::size_t ServerConfig::getMaxBodySize() const { return max_body_size_; }

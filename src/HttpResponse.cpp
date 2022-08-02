@@ -1,8 +1,6 @@
 #include "HttpResponse.h"
 
-#include <fstream>
 #include <map>
-#include <sstream>
 #include <string>
 #include <utility>
 
@@ -49,15 +47,9 @@ HttpResponse::HttpResponse(HttpResponseClientError::code status_code, ServerConf
       status_code_(HttpResponseClientError::status.at(status_code).first),
       reason_phrase_(HttpResponseClientError::status.at(status_code).second) {
   if (server_config_ != NULL) {
-    std::string error_page = server_config_->getErrorPage(status_code);
-    if (!error_page.empty()) {
-      std::ifstream file(error_page);
-      if (file.is_open()) {
-        std::stringstream buffer;
-        buffer << file.rdbuf();
-        body_ = buffer.str();
-        file.close();
-      }
+    File* error_page = server_config_->getErrorPage(status_code);
+    if (error_page != NULL) {
+      body_ = error_page->getContent();
     }
   }
 
@@ -76,15 +68,9 @@ HttpResponse::HttpResponse(HttpResponseServerError::code status_code, ServerConf
       status_code_(HttpResponseServerError::status.at(status_code).first),
       reason_phrase_(HttpResponseServerError::status.at(status_code).second) {
   if (server_config_ != NULL) {
-    std::string error_page = server_config_->getErrorPage(status_code);
-    if (!error_page.empty()) {
-      std::ifstream file(error_page);
-      if (file.is_open()) {
-        std::stringstream buffer;
-        buffer << file.rdbuf();
-        body_ = buffer.str();
-        file.close();
-      }
+    File* error_page = server_config_->getErrorPage(status_code);
+    if (error_page != NULL) {
+      body_ = error_page->getContent();
     }
   }
 
