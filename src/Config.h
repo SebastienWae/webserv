@@ -1,66 +1,42 @@
-#ifndef CONFIG_HPP
-#define CONFIG_HPP
+#ifndef CONFIG_H
+#define CONFIG_H
 
-#include <exception>
+#include <cstddef>
 #include <fstream>
-#include <iostream>
 #include <map>
-#include <sstream>
+#include <set>
 #include <string>
 #include <vector>
 
-#include "HttpResponseStatus.h"
+#include "HttpRequest.h"
 #include "ServerConfig.h"
 
 class Config {
 public:
-  Config();
-  Config& operator=(Config const& rhs);
-  Config(Config const& src);
+  Config(std::string const& config_path);
   ~Config();
-  static std::string delcom(std::string const& str);
-  static std::string openfile(const std::string& files);
-  void checkconfig(const std::string& files);
-  static void checkbracket(const std::string& str);
-  static std::string checkextension(int argc, char** argv);
-  class FilesException : public std::exception {
+
+  class ParsingException : public std::exception {
   public:
+    ParsingException(std::string const& msg) throw();
+    ~ParsingException() throw();
     virtual const char* what() const throw();
+
+  private:
+    std::string msg_;
   };
-  class ArgException : public std::exception {
-  public:
-    virtual const char* what() const throw();
-  };
-  class BadException : public std::exception {
-  public:
-    virtual const char* what() const throw();
-  };
-  class CommaException : public std::exception {
-  public:
-    virtual const char* what() const throw();
-  };
-  class NameException : public std::exception {
-  public:
-    virtual const char* what() const throw();
-  };
-  class BracketException : public std::exception {
-  public:
-    virtual const char* what() const throw();
-  };
-  class ConfException : public std::exception {
-  public:
-    virtual const char* what() const throw();
-  };
-  void setserver(std::string const& str, int* countserv);
-  void seeklocation(std::string const& str, int* countserv);
-  void setlocation(std::string const& str, const int* countserv);
-  void parse(void);
-  std::vector<ServerConfig> const* getServerConfig() const;
+  void checkPort(std::string const& port);
+  void checkHostname(std::string const& hostname);
+  void parse(std::ifstream& file);
+
+  ServerConfig const* matchServerConfig(HttpRequest const* request) const;
+
+  std::set<std::string> getPorts() const;
 
 private:
-  std::vector<ServerConfig> servers;
-  std::vector<std::string> ser;
-  std::vector<std::string> loca;
+  enum parse_state { S_NONE, S_IN_SERVER };
+
+  std::vector<ServerConfig*> servers_;
 };
 
 #endif
