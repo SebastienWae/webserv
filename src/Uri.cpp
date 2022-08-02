@@ -173,9 +173,9 @@ Uri::Uri(std::string const& uri) throw(Uri::UriParsingException) : type_(Uri::TY
           break;
         }
         case STATE_PATH: {
-          if (std::isalnum(*it) != 0 || *it == ':' || *it == '@' || *it == '&' || *it == '=' || *it == '+' || *it == '$'
-              || *it == ',' || *it == '%' || *it == '-' || *it == '_' || *it == '!' || *it == '~' || *it == '*'
-              || *it == '\'' || *it == '(' || *it == ')' || *it == '/') {
+          if (std::isalnum(*it) != 0 || *it == '.' || *it == ':' || *it == '@' || *it == '&' || *it == '=' || *it == '+'
+              || *it == '$' || *it == ',' || *it == '%' || *it == '-' || *it == '_' || *it == '!' || *it == '~'
+              || *it == '*' || *it == '\'' || *it == '(' || *it == ')' || *it == '/') {
             ++it;
             if (it == uri.end() || *it == '?' || *it == '#') {
               path_ = uri.substr(std::distance(uri.begin(), last_token), std::distance(last_token, it));
@@ -195,9 +195,10 @@ Uri::Uri(std::string const& uri) throw(Uri::UriParsingException) : type_(Uri::TY
           break;
         }
         case STATE_QUERY: {
-          if (std::isalnum(*it) != 0 || *it == ';' || *it == '/' || *it == '?' || *it == ':' || *it == '@' || *it == '&'
-              || *it == '=' || *it == '+' || *it == '$' || *it == ',' || *it == '%' || *it == '-' || *it == '_'
-              || *it == '.' || *it == '!' || *it == '~' || *it == '*' || *it == '\'' || *it == '(' || *it == ')') {
+          if (std::isalnum(*it) != 0 || *it == '.' || *it == ';' || *it == '/' || *it == '?' || *it == ':' || *it == '@'
+              || *it == '&' || *it == '=' || *it == '+' || *it == '$' || *it == ',' || *it == '%' || *it == '-'
+              || *it == '_' || *it == '.' || *it == '!' || *it == '~' || *it == '*' || *it == '\'' || *it == '('
+              || *it == ')') {
             ++it;
             if (it == uri.end() || *it == '#') {
               query_ = uri.substr(std::distance(uri.begin(), last_token), std::distance(last_token, it));
@@ -232,10 +233,10 @@ std::string Uri::getPort() const { return port_; }
 
 std::string Uri::getQuery() const { return query_; }
 
-std::string Uri::getPath() const { return path_; }
+std::string Uri::getPath() const { return "/" + path_; }
 
 std::string Uri::getRaw() const {
   return (scheme_.empty() ? "" : scheme_ + "://") + (userinfo_.empty() ? "" : userinfo_ + "@") + host_
-         + (port_.empty() ? "" : ":" + port_) + (path_.empty() ? "" : "/" + path_)
-         + (query_.empty() ? "" : "?" + query_) + (fragment_.empty() ? "" : "#" + fragment_);
+         + (port_.empty() ? "" : ":" + port_) + (path_.empty() ? "" : path_) + (query_.empty() ? "" : "?" + query_)
+         + (fragment_.empty() ? "" : "#" + fragment_);
 }
