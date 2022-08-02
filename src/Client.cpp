@@ -2,10 +2,6 @@
 
 #include <sys/socket.h>
 
-#include <cstring>
-#include <ctime>
-#include <exception>
-
 #include "HttpRequest.h"
 #include "Log.h"
 
@@ -16,7 +12,7 @@ Client::~Client() {}
 
 int Client::getSocket() const { return socket_; }
 
-void Client::read(unsigned int bytes) throw(std::exception) {
+void Client::read(unsigned int bytes) throw(ReadException) {
   INFO("Reading data");
 
   char* data = new char[bytes + 1];
@@ -25,7 +21,7 @@ void Client::read(unsigned int bytes) throw(std::exception) {
 
   if (len <= 0) {
     delete[] data;
-    throw std::exception();
+    throw ReadException();
   }
 
   if (request_ != NULL) {
@@ -41,7 +37,7 @@ void Client::read(unsigned int bytes) throw(std::exception) {
   delete[] data;
 }
 
-void Client::send(unsigned int bytes) throw(std::exception) {
+void Client::send(unsigned int bytes) throw(WriteException) {
   INFO("Sending data");
 
   std::string response;
@@ -54,7 +50,7 @@ void Client::send(unsigned int bytes) throw(std::exception) {
   std::size_t len = ::send(socket_, response.c_str(), response.size(), 0);
   if (len < 0) {
     ERROR(std::strerror(errno));
-    throw std::exception();
+    throw WriteException();
   }
 }
 

@@ -12,10 +12,18 @@ public:
 
   ~Client();
 
+  class ReadException : public std::exception {
+    virtual const char* what() const throw() { return "Cannot read from client socket"; }
+  };
+
+  class WriteException : public std::exception {
+    virtual const char* what() const throw() { return "Cannot write in client socket"; }
+  };
+
   int getSocket() const;
 
-  void read(unsigned int bytes) throw(std::exception);
-  void send(unsigned int bytes) throw(std::exception);
+  void read(unsigned int bytes) throw(ReadException);
+  void send(unsigned int bytes) throw(WriteException);
 
   HttpRequest* getRequest() const;
 

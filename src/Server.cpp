@@ -1,5 +1,6 @@
 #include "Server.h"
 
+#include <iostream>
 #include <vector>
 
 #include "Cgi.h"
@@ -86,6 +87,7 @@ void Server::start() {  // NOLINT
           } else {
             removeClient(client);
           }
+          std::cerr << e.what() << std::endl;
         }
       }
     }
