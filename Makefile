@@ -8,19 +8,23 @@ OUT_DIR = out
 DEBUG_DIR = debug
 
 CXX = clang++
-WARNING = -Wall -Wextra -Werror 
+WARNING = -Wall -Wextra -Werror
 CXXFLAGS = -O0
+
 
 SRCS = main.cpp \
 	Server.cpp \
+	Client.cpp \
 	Config.cpp \
-	Location.cpp \
 	ServerConfig.cpp \
+	Route.cpp \
 	HttpRequest.cpp \
 	HttpResponse.cpp \
 	HttpResponseStatus.cpp \
 	Uri.cpp \
-	Directory.cpp
+	Directory.cpp \
+	Forms.cpp \
+	Cgi.cpp
 SRCS_PATH = $(addprefix $(SRC_DIR)/,$(SRCS))
 SRCS_PATH_BONUS = $(addprefix $(SRC_DIR)/,$(SRCS_BONUS))
 OBJS = $(addprefix $(OUT_DIR)/,$(SRCS_PATH:%.cpp=%.o))
