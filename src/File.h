@@ -14,6 +14,8 @@ public:
   File(std::string const& path);
   ~File();
 
+  std::string const& getPath() const;
+
   bool exist();
 
   bool isReadable();

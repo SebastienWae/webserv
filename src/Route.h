@@ -38,6 +38,8 @@ public:
 
   bool isAllowedMethod(enum Http::method method) const;
 
+  File* matchFile(std::string const& path) const;
+
   File* matchCGI(std::string const& file) const;
 
 private:

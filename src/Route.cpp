@@ -68,9 +68,6 @@ void Route::parse(std::string const& line) {  // NOLINT
       }
     } else if (key == "allow") {
       while (std::string::size_type pos = value.find(',')) {
-        if (pos == std::string::npos) {
-          break;
-        }
         Http::method method = Http::UNKNOWN;
         if (value.substr(0, pos) == "GET") {
           method = Http::GET;
@@ -85,6 +82,9 @@ void Route::parse(std::string const& line) {  // NOLINT
           allowed_methods_.insert(method);
         } else {
           throw ParsingException("Config file error at line: " + line);
+        }
+        if (pos == std::string::npos) {
+          break;
         }
         value = value.substr(pos + 1);
       }
@@ -170,6 +170,12 @@ std::pair<HttpResponseRedir::code, Uri*> const& Route::getRedirection() const { 
 bool Route::isAllowedMethod(enum Http::method method) const {
   std::set<enum Http::method>::iterator m = allowed_methods_.find(method);
   return m != allowed_methods_.end();
+}
+
+File* Route::matchFile(std::string const& path) const {
+  std::string absolute_path = root_->getPath() + path;
+  File* file = new File(absolute_path);
+  return file;
 }
 
 // TODO

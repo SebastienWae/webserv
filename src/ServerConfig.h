@@ -32,6 +32,7 @@ public:
 
   std::string const& getHostname() const;
   std::string const& getPort() const;
+  std::string getHost() const;
 
   File* getErrorPage(HttpResponseClientError::code code) const;
   File* getErrorPage(HttpResponseServerError::code code) const;
