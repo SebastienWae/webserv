@@ -2,16 +2,23 @@
 
 #include <vector>
 
+<<<<<<< HEAD
 #include "Directory.h"
 #include "File.h"
+    == == ==
+    =
+#include "Cgi.h"
+        >>>>>>> start CGI
 #include "Http.h"
 #include "HttpRequest.h"
 #include "HttpResponse.h"
 #include "HttpResponseStatus.h"
 #include "Log.h"
 #include "ServerConfig.h"
-
-Server::Server(Config const& config) : config_(config), kq_(kqueue()) {}
+        Server::Server(Config const& config)
+    : config_(config),
+kq_(kqueue()) {
+}
 
 Server::~Server() {
   INFO("Stoping server");
@@ -167,23 +174,25 @@ void Server::getHandler(Client* client, ServerConfig const* server_config) {
     if (route->isRedirection()) {
       response = new HttpResponse(route->getRedirection().first, route->getRedirection().second->getRaw());
     } else {
-      File* file = route->matchFile(req->getUri().getPath());
-      if (file->isReadable()) {
-        if (file->getType() == File::REG) {
-          response = new HttpResponse(HttpResponseSuccess::_200, file->getContent(), "text/html", server_config);
-        } else if (file->getType() == File::DIR) {
-          response
-              = new HttpResponse(HttpResponseSuccess::_200,
-                                 Directory::html(file->getPath(), server_config->getHost() + req->getUri().getPath()),
-                                 "text/html", server_config);
-        } else {
-          // wrong type
-          response = new HttpResponse(HttpResponseSuccess::_200, server_config);
-        }
-      } else {
-        // wrong perm
-        response = new HttpResponse(HttpResponseSuccess::_200, server_config);
-      }
+      Cgi cgitest;
+      cgitest.executeCgi(kq_, client);
+      // File* file = route->matchFile(req->getUri().getPath());
+      // if (file->isReadable()) {
+      //   if (file->getType() == File::REG) {
+      //     response = new HttpResponse(HttpResponseSuccess::_200, file->getContent(), "text/html", server_config);
+      //   } else if (file->getType() == File::DIR) {
+      //     response
+      //         = new HttpResponse(HttpResponseSuccess::_200,
+      //                            Directory::html(file->getPath(), server_config->getHost() +
+      //                            req->getUri().getPath()), "text/html", server_config);
+      //   } else {
+      //     // wrong type
+      //     response = new HttpResponse(HttpResponseSuccess::_200, server_config);
+      //   }
+      // } else {
+      //   // wrong perm
+      //   response = new HttpResponse(HttpResponseSuccess::_200, server_config);
+      // }
     }
   } else {
     response = new HttpResponse(HttpResponseClientError::_405, server_config);
