@@ -6,13 +6,15 @@
 #include <fstream>
 #include <sstream>
 
+std::vector<std::pair<std::string const, std::string const> > mimeTypes = initMimeFileType();
+
 File::File(std::string const& path) : path_(path), input_stream_(NULL), output_stream_(NULL) {
   last_time.tv_sec = 0;
   last_time.tv_nsec = 0;
   stat_.st_ctimespec.tv_sec = 0;
   stat_.st_ctimespec.tv_nsec = 0;
-  stat();
   initMimeFileType();
+  stat();
 }
 
 File::~File() {
@@ -178,7 +180,8 @@ std::ofstream* File::getOStream() {
   return NULL;
 }
 
-void File::initMimeFileType() {
+std::vector<std::pair<std::string const, std::string const> > initMimeFileType() {
+  std::vector<std::pair<std::string const, std::string const> > mimeTypes;
   mimeTypes.push_back(std::pair<std::string const, std::string>(".aac", "audio/aac"));
   mimeTypes.push_back(std::pair<std::string const, std::string>(".avi ", "video/x-msvideo"));
   mimeTypes.push_back(std::pair<std::string const, std::string>(".bin", "application/octet-stream"));
@@ -247,4 +250,5 @@ void File::initMimeFileType() {
   mimeTypes.push_back(std::pair<std::string const, std::string>(".3gp", "video/3gpp"));
   mimeTypes.push_back(std::pair<std::string const, std::string>(".3g2", "video/3gpp2"));
   mimeTypes.push_back(std::pair<std::string const, std::string>(".7z", "	application/x-7z-compressed"));
+  return (mimeTypes);
 }
