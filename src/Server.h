@@ -3,86 +3,57 @@
 
 #include <netdb.h>
 #include <sys/event.h>
-#include <sys/time.h>
-#include <sys/types.h>
+#include <sys/fcntl.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
-#include <list>
+#include <algorithm>
+#include <exception>
+#include <iterator>
+#include <set>
+#include <vector>
 
-#include "HttpResponse.h"
+#include "Client.h"
+#include "Config.h"
 #include "ServerConfig.h"
 
-#define MAX_PENDING_CONNECTIONS 50   // TO SET
-#define BUFSIZE_CLIENT_REQUEST 4096  // TO SET
+#define KQ_SIZE 1024
+#define INVALID_SOCKET -1
+#define TIMEOUT 30000
 
-/* to use for multiple ports => multithread */
-void* threadWrapper(void* current);
 class Server {
 public:
-  Server(ServerConfig const* config);
+  Server(Config const& config);
   ~Server();
-  class ServerCoreFatalException : public std::exception {
-  public:
-    virtual char const* what() const throw();
-  };
 
-  class ServerCoreNonFatalException : public std::exception {
-  public:
-    virtual char const* what() const throw();
-  };
-
-  void* run();
-
-  /* Listener functions */
-  void createListenerSocket();
-  void startListening() const;
-  class ListenerException : public ServerCoreFatalException {
-  public:
-    virtual char const* what() const throw();
-  };
-
-  /* Poll functions */
-  void pollProcessInit();
-  class PollException : public ServerCoreNonFatalException {
-  public:
-    virtual char const* what() const throw();
-  };
-
-  /* Client functions */
-  static void* getAddress(struct sockaddr* sockaddress);
-  void getClientRequest(int event_fd);
-  class ClientGetRequestException : public ServerCoreNonFatalException {
-  public:
-    virtual char const* what() const throw();
-  };
-  void sendingMessageBackToClient(int event_fd, HttpResponse const& response);
-  class ClientSendResponseException : public ServerCoreNonFatalException {
-  public:
-    virtual char const* what() const throw();
-  };
-
-  ServerConfig const* getConfig() const;
-  /* TO DO : Setter and Getter to put these variables in private */
-  std::string port;
+  void start();
 
 private:
-  /*kqueue variables */
-  struct kevent change_event[4];
-  struct kevent event[4];
-  int new_events;
-  int kq;
+  Config const& config_;
 
-  /* Listener variables */
-  int listener;
-  struct addrinfo hints;
-  struct addrinfo* address_info;
-  struct addrinfo* p;
+  int const kq_;
+  struct kevent events_[KQ_SIZE];
 
-  /* Client request variables */
-  int new_socket;
-  sockaddr_storage client_address;
-  socklen_t address_len;
-  char remoteIP[INET6_ADDRSTRLEN];
-  ServerConfig const* config_;
+  std::vector<int> ports_socket_;
+
+  std::map<int, Client*> clients_;
+
+  void updateEvents(int ident, short filter, u_short flags);
+  void listenToPort(std::string const& port);
+  void closeConnection(int socket);
+  void acceptConnection(int socket);
+
+  Client* findClient(int socket);
+  void removeClient(Client* client);
+
+  void processRequest(Client* client);
+
+  void getHandler(Client* client, ServerConfig const* server_config);
+  void headHandler(Client* client, ServerConfig const* server_config);
+  void postHandler(Client* client, ServerConfig const* server_config);
+  void deleteHandler(Client* client, ServerConfig const* server_config);
+
+  void timeoutClient(Client* client);
 };
 
 #endif
