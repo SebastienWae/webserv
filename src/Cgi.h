@@ -2,8 +2,10 @@
 #define CGI_H
 #include <iostream>
 #include <map>
+#include <string>
 
 #include "Client.h"
+#include "Route.h"
 #include "ServerConfig.h"
 #define ENVLENGTH 16
 #define ENVCOL 16
@@ -11,12 +13,12 @@
 class Cgi {
 public:
   Cgi(Client* client, ServerConfig const* server_config, std::string const& method);
-  Cgi();
   ~Cgi();
-  void executeCgi(int const& kq, Client* client);
+  void executeCgi(int const& kq, std::string const& path);
 
 private:
   std::vector<std::string> env;
+  Client* client_;
 };
 
 #endif

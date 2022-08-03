@@ -117,7 +117,7 @@ void Route::parse(std::string const& line) {  // NOLINT
         throw ParsingException("Config file error at line: " + line);
       }
     } else if (key == "cgi") {
-      sep = line.find(' ');
+      sep = value.find(' ');
       std::string ext = value.substr(0, sep);
       if (!ext.empty() && ext.at(0) == '.') {
         for (std::string::iterator it = ext.begin() + 1; it != ext.end(); ++it) {
@@ -179,8 +179,14 @@ File* Route::matchFile(std::string const& path) const {
 }
 
 File* Route::matchCGI(std::string const& file) const {
-  if (cgi_.find(file) != cgi_.end()) {
-    return (cgi_.find(file)->second);
+  std::string::size_type sep = file.find_last_of('.');
+  if (sep != std::string::npos) {
+    std::string ext = file.substr(sep);
+    std::map<std::string, File*>::const_iterator cgi_dir = cgi_.find(ext);
+
+    if (cgi_dir != cgi_.end()) {
+      return (cgi_dir->second);
+    }
   }
   return NULL;
 }

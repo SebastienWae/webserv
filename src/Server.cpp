@@ -170,27 +170,42 @@ void Server::getHandler(Client* client, ServerConfig const* server_config) {
     if (route->isRedirection()) {
       response = new HttpResponse(route->getRedirection().first, route->getRedirection().second->getRaw());
     } else {
-      // TODO : cgi matching
-      Cgi cgitest(client, server_config, "GET");
-      cgitest.executeCgi(kq_, client);
-      response = new HttpResponse(HttpResponseSuccess::_200, server_config);
-      // File* file = route->matchFile(req->getUri().getPath());
-      // if (file->isReadable()) {
-      //   if (file->getType() == File::REG) {
-      //     response = new HttpResponse(HttpResponseSuccess::_200, file->getContent(), "text/html", server_config);
-      //   } else if (file->getType() == File::DIR) {
-      //     response
-      //         = new HttpResponse(HttpResponseSuccess::_200,
-      //                            Directory::html(file->getPath(), server_config->getHost() +
-      //                            req->getUri().getPath()), "text/html", server_config);
-      //   } else {
-      //     // wrong type
-      //     response = new HttpResponse(HttpResponseSuccess::_200, server_config);
-      //   }
-      // } else {
-      //   // wrong perm
-      //   response = new HttpResponse(HttpResponseSuccess::_200, server_config);
-      // }
+      File* cgi_dir = route->matchCGI(req->getUri()->getDecodedPath());
+      if (cgi_dir != NULL && cgi_dir->exist() && cgi_dir->getType() == File::DIR && cgi_dir->isReadable()
+          && cgi_dir->isExecutable()) {
+        std::string tmp = cgi_dir->getPath() + client->getRequest()->getUri()->getPath();
+
+        File file(tmp);
+        if (!file.exist()) {
+          response = new HttpResponse(HttpResponseClientError::_404, server_config);
+        } else if (!file.isExecutable()) {
+          response = new HttpResponse(HttpResponseClientError::_403, server_config);
+        } else if (file.getType() != File::REG) {
+          response = new HttpResponse(HttpResponseClientError::_403, server_config);
+        } else {
+          Cgi cgitest(client, server_config, "GET");
+          cgitest.executeCgi(kq_, file.getPath());
+          return;
+        }
+      } else {
+        File* file = route->matchFile(req->getUri()->getPath());
+        if (file != NULL && file->isReadable()) {
+          if (file->getType() == File::REG) {
+            response = new HttpResponse(HttpResponseSuccess::_200, file->getContent(), "text/html", server_config);
+          } else if (file->getType() == File::DIR) {
+            response = new HttpResponse(
+                HttpResponseSuccess::_200,
+                Directory::html(file->getPath(), server_config->getHost() + req->getUri()->getPath()), "text/html",
+                server_config);
+          } else {
+            // wrong type
+            response = new HttpResponse(HttpResponseSuccess::_200, server_config);
+          }
+        } else {
+          // wrong perm
+          response = new HttpResponse(HttpResponseSuccess::_200, server_config);
+        }
+      }
     }
   } else {
     response = new HttpResponse(HttpResponseClientError::_405, server_config);
@@ -293,7 +308,7 @@ void Server::closeConnection(int socket) {
 }
 
 void Server::acceptConnection(int socket) {
-  // TODO : add IP to client object
+  // TODO : add IP to client object client_addr.in_addr;
   INFO("New connection");
 
   sockaddr_in client_addr;

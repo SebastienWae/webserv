@@ -1,6 +1,10 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
+#include <netinet/in.h>
+#include <netinet/ip.h>
+#include <sys/socket.h>
+
 #include <ctime>
 #include <exception>
 
@@ -46,6 +50,7 @@ private:
   std::string response_data_;
   bool reading_;
   bool replied_;
+  struct in_addr ip_;
 };
 
 #endif
