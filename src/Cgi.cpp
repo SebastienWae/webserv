@@ -79,6 +79,7 @@ Cgi::Cgi(Client* client, ServerConfig const* server_config, std::string const& m
   std::string server_software2 = server_software + "";
   env.push_back(server_software2);
   (void)client;
+  // TODO add headers except Authentication / content-length / content-type
 }
 Cgi::Cgi() {}
 

@@ -64,6 +64,7 @@ void Server::start() {  // NOLINT
           } else if ((events_[i].flags & EV_EOF) != 0 || client->hasReplied()) {
             removeClient(client);
           } else if (events_[i].filter == EVFILT_READ) {
+            // TODO : differenciate clients events and cgi events
             if (client->getTime() + TIMEOUT <= std::time(nullptr)) {
               timeoutClient(client);
             } else {
@@ -169,6 +170,7 @@ void Server::getHandler(Client* client, ServerConfig const* server_config) {
     if (route->isRedirection()) {
       response = new HttpResponse(route->getRedirection().first, route->getRedirection().second->getRaw());
     } else {
+      // TODO : cgi matching
       Cgi cgitest(client, server_config, "GET");
       cgitest.executeCgi(kq_, client);
       response = new HttpResponse(HttpResponseSuccess::_200, server_config);
@@ -291,6 +293,7 @@ void Server::closeConnection(int socket) {
 }
 
 void Server::acceptConnection(int socket) {
+  // TODO : add IP to client object
   INFO("New connection");
 
   sockaddr_in client_addr;
