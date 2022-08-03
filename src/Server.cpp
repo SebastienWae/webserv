@@ -174,7 +174,7 @@ void Server::getHandler(Client* client, ServerConfig const* server_config) {
     if (route->isRedirection()) {
       response = new HttpResponse(route->getRedirection().first, route->getRedirection().second->getRaw());
     } else {
-      Cgi cgitest;
+      Cgi cgitest(client, server_config, "GET");
       cgitest.executeCgi(kq_, client);
       // File* file = route->matchFile(req->getUri().getPath());
       // if (file->isReadable()) {
