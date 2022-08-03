@@ -7,10 +7,8 @@
 #include <stdexcept>
 #include <string>
 
-Uri::Uri() : type_(TYPE_NONE) {}
-
 // NOLINTNEXTLINE
-Uri::Uri(std::string const& uri) throw(Uri::UriParsingException) : type_(Uri::TYPE_NONE) {
+Uri::Uri(std::string const& uri) throw(UriParsingException) : type_(Uri::TYPE_NONE), raw_(uri) {
   if (uri.empty()) {
     throw UriParsingException();
   }
@@ -26,13 +24,12 @@ Uri::Uri(std::string const& uri) throw(Uri::UriParsingException) : type_(Uri::TY
             scheme_ = "http";
             it += 2;
             last_token = it;
-          } else if (uri.at(0) == '/') {
+          } else if (uri.length() >= 1 && uri[0] == '/' && uri[1] != '/') {
             type_ = TYPE_RELATIVE;
             state = STATE_PATH;
             ++it;
             last_token = it;
           } else if (std::isalpha(uri.at(0)) != 0) {
-            type_ = TYPE_ABSOLUTE;
             state = STATE_SCHEME;
             last_token = it;
           } else {
@@ -49,6 +46,7 @@ Uri::Uri(std::string const& uri) throw(Uri::UriParsingException) : type_(Uri::TY
             if (scheme_ != "http") {
               throw UriParsingException();
             }
+            type_ = TYPE_ABSOLUTE;
             ++it;
             last_token = it;
             if (uri.substr(std::distance(uri.begin(), last_token), 2) == "//") {
@@ -102,13 +100,15 @@ Uri::Uri(std::string const& uri) throw(Uri::UriParsingException) : type_(Uri::TY
           break;
         }
         case STATE_HOSTNAME: {
-          if (std::isalnum(*it) != 0 || *it == '.' || *it == '-') {
+          if (std::isalnum(*it) != 0 || *it == '.' || *it == '-' || *it == '!' || *it == '$' || *it == '&'
+              || *it == '\'' || *it == '(' || *it == ')' || *it == '*' || *it == '+' || *it == ',' || *it == ';'
+              || *it == '=') {
             ++it;
             if (it == uri.end() || *it == '/' || *it == ':' || *it == '?' || *it == '#') {
               host_ = uri.substr(std::distance(uri.begin(), last_token), std::distance(last_token, it));
               std::transform(host_.begin(), host_.end(), host_.begin(), ::tolower);
               if (*it == '/' || *it == ':' || *it == '?' || *it == '#') {
-                if (*it == '/') {
+                if (*it == '/' && *(it + 1) != '/') {
                   state = STATE_PATH;
                 } else if (*it == ':') {
                   state = STATE_PORT;
@@ -132,7 +132,7 @@ Uri::Uri(std::string const& uri) throw(Uri::UriParsingException) : type_(Uri::TY
             if (it == uri.end() || *it == '/' || *it == ':' || *it == '?' || *it == '#') {
               host_ = uri.substr(std::distance(uri.begin(), last_token), std::distance(last_token, it));
               if (*it == '/' || *it == ':' || *it == '?' || *it == '#') {
-                if (*it == '/') {
+                if (*it == '/' && *(it + 1) != '/') {
                   state = STATE_PATH;
                 } else if (*it == ':') {
                   state = STATE_PORT;
@@ -156,7 +156,7 @@ Uri::Uri(std::string const& uri) throw(Uri::UriParsingException) : type_(Uri::TY
             if (it == uri.end() || *it == '/' || *it == '?' || *it == '#') {
               port_ = uri.substr(std::distance(uri.begin(), last_token), std::distance(last_token, it));
               if (*it == '/' || *it == '#') {
-                if (*it == '/') {
+                if (*it == '/' && *(it + 1) != '/') {
                   state = STATE_PATH;
                 } else if (*it == '?') {
                   state = STATE_QUERY;
@@ -173,9 +173,10 @@ Uri::Uri(std::string const& uri) throw(Uri::UriParsingException) : type_(Uri::TY
           break;
         }
         case STATE_PATH: {
-          if (std::isalnum(*it) != 0 || *it == '.' || *it == ':' || *it == '@' || *it == '&' || *it == '=' || *it == '+'
-              || *it == '$' || *it == ',' || *it == '%' || *it == '-' || *it == '_' || *it == '!' || *it == '~'
-              || *it == '*' || *it == '\'' || *it == '(' || *it == ')' || *it == '/') {
+          if (std::isalnum(*it) != 0 || *it == '\'' || *it == ';' || *it == '=' || *it == '.' || *it == ':'
+              || *it == '@' || *it == '&' || *it == '=' || *it == '+' || *it == '$' || *it == ',' || *it == '%'
+              || *it == '-' || *it == '_' || *it == '!' || *it == '~' || *it == '*' || *it == '\'' || *it == '('
+              || *it == ')' || *it == '/') {
             ++it;
             if (it == uri.end() || *it == '?' || *it == '#') {
               path_ = uri.substr(std::distance(uri.begin(), last_token), std::distance(last_token, it));
@@ -189,6 +190,14 @@ Uri::Uri(std::string const& uri) throw(Uri::UriParsingException) : type_(Uri::TY
                 last_token = it;
               }
             }
+          } else if (*it == '?' || *it == '#') {
+            if (*it == '?') {
+              state = STATE_QUERY;
+            } else if (*it == '#') {
+              state = STATE_FRAGMENT;
+            }
+            ++it;
+            last_token = it;
           } else {
             throw UriParsingException();
           }
@@ -208,6 +217,8 @@ Uri::Uri(std::string const& uri) throw(Uri::UriParsingException) : type_(Uri::TY
                 last_token = it;
               }
             }
+          } else {
+            throw UriParsingException();
           }
           break;
         }
@@ -219,6 +230,10 @@ Uri::Uri(std::string const& uri) throw(Uri::UriParsingException) : type_(Uri::TY
       }
     }
   } catch (std::exception& e) {
+    throw UriParsingException();
+  }
+  if ((state == STATE_HOST && host_.empty()) || (state == STATE_HOST_TYPE) || (state == STATE_PORT && port_.empty())
+      || (type_ == TYPE_NONE)) {
     throw UriParsingException();
   }
 }
@@ -235,8 +250,29 @@ std::string Uri::getQuery() const { return query_; }
 
 std::string Uri::getPath() const { return "/" + path_; }
 
-std::string Uri::getRaw() const {
-  return (scheme_.empty() ? "" : scheme_ + "://") + (userinfo_.empty() ? "" : userinfo_ + "@") + host_
-         + (port_.empty() ? "" : ":" + port_) + (path_.empty() ? "" : path_) + (query_.empty() ? "" : "?" + query_)
-         + (fragment_.empty() ? "" : "#" + fragment_);
+std::string Uri::getRaw() const { return raw_; }
+
+std::string Uri::getDecodedPath() {
+  if (decoded_path_.empty()) {
+    std::string decoded = "/";
+    for (std::string::const_iterator it = path_.begin(); it != path_.end(); ++it) {
+      char c = *it;
+      switch (c) {
+        case '%':
+          if (it + 1 != path_.end() && it + 2 != path_.end()) {
+            char hs[3] = {it[1], it[2], 0};
+            decoded += static_cast<char>(strtol(hs, nullptr, 16));
+            it += 2;
+          }
+          break;
+        case '+':
+          decoded += ' ';
+          break;
+        default:
+          decoded += c;
+      }
+    }
+    decoded_path_ = decoded;
+  }
+  return decoded_path_;
 }
