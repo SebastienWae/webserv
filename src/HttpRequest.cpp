@@ -1,5 +1,6 @@
 #include "HttpRequest.h"
 
+#include <__nullptr>
 #include <cctype>
 #include <cstddef>
 #include <exception>
@@ -21,7 +22,8 @@ const HttpRequest::MethodMap HttpRequest::method_map = initMethodMap();
 
 // TODO: check request size
 // NOLINTNEXTLINE
-HttpRequest::HttpRequest(std::string const& raw) : status_(S_NONE), time_(std::time(nullptr)), method_(Http::UNKNOWN) {
+HttpRequest::HttpRequest(std::string const& raw)
+    : status_(S_NONE), time_(std::time(nullptr)), method_(Http::UNKNOWN), uri_(NULL) {
   enum req_parse_state state = S_REQ_METHOD;
   std::string header_name;
   std::string::const_iterator last_token;
@@ -54,8 +56,8 @@ HttpRequest::HttpRequest(std::string const& raw) : status_(S_NONE), time_(std::t
         if (*it == SP) {
           std::string uri = raw.substr(std::distance(raw.begin(), last_token), std::distance(last_token, it));
           try {
-            uri_ = Uri(uri);
-            if (uri_.getType() == Uri::TYPE_RELATIVE) {
+            uri_ = new Uri(uri);
+            if (uri_->getType() == Uri::TYPE_RELATIVE) {
               ++it;
               last_token = it;
               state = S_REQ_VERSION;
@@ -206,7 +208,11 @@ bool HttpRequest::addChunk(std::string const& chunk) {
   return false;
 }
 
-HttpRequest::~HttpRequest() {}
+HttpRequest::~HttpRequest() {
+  if (uri_ != NULL) {
+    delete uri_;
+  }
+}
 
 enum HttpRequest::status HttpRequest::getStatus() const { return status_; }
 
@@ -214,7 +220,7 @@ std::time_t const& HttpRequest::getTime() const { return time_; }
 
 enum Http::method HttpRequest::getMethod() const { return method_; }
 
-Uri const& HttpRequest::getUri() const { return uri_; }
+Uri const* HttpRequest::getUri() const { return uri_; }
 
 std::map<std::string, std::string> const& HttpRequest::getHeaders() const { return headers_; }
 

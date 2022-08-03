@@ -36,7 +36,7 @@ public:
   enum status getStatus() const;
   std::time_t const& getTime() const;
   enum Http::method getMethod() const;
-  Uri const& getUri() const;
+  Uri const* getUri() const;
   std::map<std::string, std::string> const& getHeaders() const;
   std::string const& getBody() const;
   std::string getHost() const;
@@ -56,7 +56,7 @@ private:
   enum status status_;
   std::time_t time_;
   enum Http::method method_;
-  Uri uri_;
+  Uri* uri_;
   std::map<std::string, std::string> headers_;
   std::string body_;
 };
