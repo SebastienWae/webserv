@@ -1,2 +1,4 @@
 #!/bin/bash
-echo $CONTENT_LENGTH
+/usr/bin/env
+echo $SERVER_PROTOCOL
+echo bonjour

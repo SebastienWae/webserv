@@ -2,23 +2,16 @@
 
 #include <vector>
 
-<<<<<<< HEAD
+#include "Cgi.h"
 #include "Directory.h"
 #include "File.h"
-    == == ==
-    =
-#include "Cgi.h"
-        >>>>>>> start CGI
 #include "Http.h"
 #include "HttpRequest.h"
 #include "HttpResponse.h"
 #include "HttpResponseStatus.h"
 #include "Log.h"
 #include "ServerConfig.h"
-        Server::Server(Config const& config)
-    : config_(config),
-kq_(kqueue()) {
-}
+Server::Server(Config const& config) : config_(config), kq_(kqueue()) {}
 
 Server::~Server() {
   INFO("Stoping server");
@@ -176,6 +169,7 @@ void Server::getHandler(Client* client, ServerConfig const* server_config) {
     } else {
       Cgi cgitest(client, server_config, "GET");
       cgitest.executeCgi(kq_, client);
+      response = new HttpResponse(HttpResponseSuccess::_200, server_config);
       // File* file = route->matchFile(req->getUri().getPath());
       // if (file->isReadable()) {
       //   if (file->getType() == File::REG) {
