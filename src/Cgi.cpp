@@ -19,17 +19,15 @@
 #include <string>
 #include <vector>
 
+#include "HttpRequest.h"
 #include "Log.h"
 #include "ServerConfig.h"
 
 Cgi::Cgi(Client* client, ServerConfig const* server_config, std::string const& method) {
-  std::string tmp;
-  std::string tmp2;
+  HttpRequest const* req = client->getRequest();
+  Uri const* uri = req->getUri();
 
-  tmp.reserve(ENVCOL);
-  tmp2.reserve(ENVCOL);
-  std::map<std::string, std::string> headers = client->getRequest()->getHeaders();
-
+  std::map<std::string, std::string> headers = req->getHeaders();
   std::string auth = "AUTH_TYPE=";
   std::string auth2 = auth + "";
   env.push_back(auth2);
@@ -43,10 +41,12 @@ Cgi::Cgi(Client* client, ServerConfig const* server_config, std::string const& m
   std::string gate_way2 = gate_way + "CGI/1.1";
   env.push_back(gate_way2);
   std::string path_translated = "PATH_TRANSLATED=";
-  std::string path_translated2 = path_translated + client->getRequest()->getUri().getDecodedPath();
+  std::string path_translated2 = path_translated
+                                 + server_config->matchRoute(uri)->matchCGI(uri->getDecodedPath())->getPath()
+                                 + uri->getDecodedPath();
   env.push_back(path_translated2);
   std::string query_string = "QUERY_STRING=";
-  std::string query_string2 = query_string + client->getRequest()->getUri().getQuery();
+  std::string query_string2 = query_string + uri->getQuery();
   env.push_back(query_string2);
   std::string remote_addr = "REMOTE_ADDR=";
   std::string remote_addr2 = remote_addr + "";  // TODO:
@@ -64,7 +64,7 @@ Cgi::Cgi(Client* client, ServerConfig const* server_config, std::string const& m
   std::string request_method2 = request_method + method;
   env.push_back(request_method2);
   std::string scipt_name = "SCRIPT_NAME=";
-  std::string scipt_name2 = scipt_name + client->getRequest()->getUri().getPath();
+  std::string scipt_name2 = scipt_name + uri->getPath();
   env.push_back(scipt_name2);
   std::string server_name = "SERVER_NAME=";
   std::string server_name2 = server_name + server_config->getHostname();
@@ -78,12 +78,15 @@ Cgi::Cgi(Client* client, ServerConfig const* server_config, std::string const& m
   std::string server_software = "SERVER_SOFTWARE=";
   std::string server_software2 = server_software + "";
   env.push_back(server_software2);
-  (void)client;
-  // TODO add headers except Authentication / content-length / content-type
+  for (std::map<std::string, std::string>::iterator it = headers.begin(); it != headers.end(); ++it) {
+    if (it->first != "authentication" && it->first != "content-lenght" && it->first != "content-type") {
+      env.push_back("HTTP_" + it->first + "=" + it->second);
+    }
+  }
+  client_ = client;
 }
-Cgi::Cgi() {}
 
-void Cgi::executeCgi(int const& kq, Client* client) {
+void Cgi::executeCgi(int const& kq, std::string const& path) {
   struct kevent kev;
   char* arr[env.size() + 1];
   for (std::vector<std::string>::iterator it = env.begin(); it != env.end(); ++it) {
@@ -95,7 +98,7 @@ void Cgi::executeCgi(int const& kq, Client* client) {
   std::string output;
   pid_t parent;
   int fd = mkstemp(const_cast<char*>(templat.c_str()));
-  EV_SET(&kev, fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, reinterpret_cast<long>(client), &timeout);
+  EV_SET(&kev, fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, reinterpret_cast<long>(client_), &timeout);
   int n = kevent(kq, &kev, 1, NULL, 0, 0);
   if (n == 0) {
     INFO("CGI : Kevent timeout");
@@ -104,10 +107,10 @@ void Cgi::executeCgi(int const& kq, Client* client) {
   }
 
   parent = fork();
-  std::string test = "/goinfre/jperras/server/test.sh";
+
   if (parent == 0) {
     dup2(fd, STDOUT_FILENO);
-    execve(test.c_str(), NULL, arr);
+    execve(path.c_str(), NULL, arr);
     std::cout << std::strerror(errno) << std::endl;
     exit(0);
   }

@@ -139,7 +139,7 @@ Route* ServerConfig::matchRoute(Uri const* uri) const {  // NOLINT
 }
 
 std::string const& ServerConfig::getHostname() const { return hostname_; }
-
+std::vector<Route*> const& ServerConfig::getRoute() const { return routes_; }
 std::string const& ServerConfig::getPort() const { return port_; }
 
 std::string ServerConfig::getHost() const { return "http://" + hostname_ + (port_ != "80" ? ":" + port_ : ""); }
