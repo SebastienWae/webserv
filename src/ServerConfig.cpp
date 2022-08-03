@@ -86,17 +86,18 @@ void ServerConfig::verify() const throw(ParsingException) {
   if (routes_.empty()) {
     throw ParsingException("All server must have at least one default route '/'");
   }
-  if (matchRoute(Uri("/")) == NULL) {
+  Uri uri("/");
+  if (matchRoute(&uri) == NULL) {
     throw ParsingException("All server must have a default '/' route");
   }
 }
 
-Route* ServerConfig::matchRoute(Uri const& uri) const {  // NOLINT
+Route* ServerConfig::matchRoute(Uri const* uri) const {  // NOLINT
   int max = 0;
   Route* match = NULL;
   Route* defaut_match = NULL;
 
-  std::string uri_path = uri.getPath();
+  std::string uri_path = uri->getPath();
   for (std::vector<Route*>::const_iterator it = routes_.begin(); it != routes_.end(); ++it) {
     std::string route_path = (*it)->getLocation();
     std::string::iterator uri_it = uri_path.begin();

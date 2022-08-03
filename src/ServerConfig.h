@@ -28,7 +28,7 @@ public:
   Route* parse(std::string const& line);
   void verify() const throw(ParsingException);
 
-  Route* matchRoute(Uri const& uri) const;
+  Route* matchRoute(Uri const* uri) const;
 
   std::string const& getHostname() const;
   std::string const& getPort() const;
