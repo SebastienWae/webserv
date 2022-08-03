@@ -13,44 +13,86 @@
 #include <__nullptr>
 #include <cstddef>
 #include <cstdio>
+#include <cstring>
 #include <iostream>
 #include <iterator>
 #include <string>
+#include <vector>
 
 #include "Log.h"
 #include "ServerConfig.h"
 
 Cgi::Cgi(Client* client, ServerConfig const* server_config, std::string const& method) {
-  env["AUTH_TYPE="] = "";
-  env["CONTENT_LENGTH="] = "";
-  env["CONTENT_TYPE="] = "";
-  env["GATEWAY_INTERFACE="] = "CGI/1.1";
-  env["PATH_TRANSLATED="] = "";
-  env["QUERY_STRING="] = client->getRequest()->getUri().getQuery();
-  env["REMOTE_ADDR="] = server_config->getHostname();
-  env["REMOTE_HOST="] = "";
-  env["REMOTE_IDENT="] = "";
-  env["REMOTE_USER="] = "";
-  env["REQUEST_METHOD="] = method;
-  env["SCRIPT_NAME="] = client->getRequest()->getUri().getPath();
-  env["SERVER_NAME="] = server_config->getHostname();
-  env["SERVER_PORT="] = server_config->getPort();
-  env["SERVER_PROTOCOL="] = "HTTP/1.1";
-  env["SERVER_SOFTWARE="] = "";
+  std::string tmp;
+  std::string tmp2;
+
+  tmp.reserve(ENVCOL);
+  tmp2.reserve(ENVCOL);
+  std::map<std::string, std::string> headers = client->getRequest()->getHeaders();
+
+  std::string auth = "AUTH_TYPE=";
+  std::string auth2 = auth + "";
+  env.push_back(auth2);
+  std::string content_lenght = "CONTENT_LENGTH=";
+  std::string content_lenght2 = content_lenght + headers["content-lenght"];
+  env.push_back(content_lenght);
+  std::string content_type = "CONTENT_TYPE=";
+  std::string content_type2 = content_type + headers["content-type"];
+  env.push_back(content_type2);
+  std::string gate_way = "GATEWAY_INTERFACE=";
+  std::string gate_way2 = gate_way + "CGI/1.1";
+  env.push_back(gate_way2);
+  std::string path_translated = "PATH_TRANSLATED=";
+  std::string path_translated2 = path_translated + "" /*client->getRequest()->getUri()*/;  // TODO:
+  env.push_back(path_translated2);
+  std::string query_string = "QUERY_STRING=";
+  std::string query_string2 = query_string + client->getRequest()->getUri().getQuery();
+  env.push_back(query_string2);
+  std::string remote_addr = "REMOTE_ADDR=";
+  std::string remote_addr2 = remote_addr + "";  // TODO:
+  env.push_back(remote_addr2);
+  std::string remote_host = "REMOTE_HOST=";
+  std::string remote_host2 = remote_host + "";  // vide
+  env.push_back(remote_host2);
+  std::string remote_ident = "REMOTE_IDENT=";
+  std::string remote_ident2 = remote_ident + "";  // vide
+  env.push_back(remote_ident2);
+  std::string remote_user = "REMOTE_USER=";
+  std::string remote_user2 = remote_user + "";  // vide
+  env.push_back(remote_user2);
+  std::string request_method = "REQUEST_METHOD=";
+  std::string request_method2 = request_method + method;
+  env.push_back(request_method2);
+  std::string scipt_name = "SCRIPT_NAME=";
+  std::string scipt_name2 = scipt_name + client->getRequest()->getUri().getPath();
+  env.push_back(scipt_name2);
+  std::string server_name = "SERVER_NAME=";
+  std::string server_name2 = server_name + server_config->getHostname();
+  env.push_back(server_name2);
+  std::string server_port = "SERVER_PORT=";
+  std::string server_port2 = server_port + server_config->getPort();
+  env.push_back(server_port2);
+  std::string server_protocol = "SERVER_PROTOCOL=";
+  std::string server_protocol2 = server_protocol + "HTTP/1.1";
+  env.push_back(server_protocol2);
+  std::string server_software = "SERVER_SOFTWARE=";
+  std::string server_software2 = server_software + "";
+  env.push_back(server_software2);
   (void)client;
 }
 Cgi::Cgi() {}
 
 void Cgi::executeCgi(int const& kq, Client* client) {
   struct kevent kev;
+  char* arr[ENVLENGTH];
+  for (std::vector<std::string>::iterator it = env.begin(); it != env.end(); ++it) {
+    arr[std::distance(env.begin(), it)] = const_cast<char*>(it->c_str());
+  }
   timespec timeout = {1, 0};
   std::string templat = "WebServ";
-  char** tmp;
-  char* const* array = NULL;
   std::string output;
   pid_t parent;
   int fd = mkstemp(const_cast<char*>(templat.c_str()));
-  dup2(fd, STDOUT_FILENO);
   EV_SET(&kev, fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, reinterpret_cast<long>(client), &timeout);
   int n = kevent(kq, &kev, 1, NULL, 0, 0);
   if (n == 0) {
@@ -58,17 +100,13 @@ void Cgi::executeCgi(int const& kq, Client* client) {
   } else if (n < 0) {
     ERROR(std::strerror(errno));
   }
-  tmp = malloc(sizeof(char) * (env.size() + 1));
-  for (std::map<std::string, std::string>::iterator it = env.begin(); it != env.end(); it++) {
-    output.append(it->first.c_str(), it->second.c_str());
-    tmp[std::distance(it, env.end())] = malloc(sizeof(char) * (output.length() + 1));
-    strcpy(tmp[std::distance(it, env.end())], const_cast<char*>(output.c_str()));
-  }
-  strcpy(array[0], const_cast<char*>(env.find("SERVER_NAME=")->second.c_str()));
   parent = fork();
+  std::string test = "/goinfre/jperras/server/test.sh";
   if (parent == 0) {
-    execve(array[0], (array), tmp);
+    dup2(fd, STDOUT_FILENO);
+    execve(test.c_str(), NULL, arr);
   }
+  close(fd);
 }
 
 Cgi::~Cgi() {}

@@ -1,2 +1,2 @@
 #!/bin/bash
-echo "bonjour"
+echo $CONTENT_LENGTH

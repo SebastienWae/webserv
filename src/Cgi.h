@@ -5,6 +5,8 @@
 
 #include "Client.h"
 #include "ServerConfig.h"
+#define ENVLENGTH 16
+#define ENVCOL 16
 
 class Cgi {
 public:
@@ -14,7 +16,7 @@ public:
   void executeCgi(int const& kq, Client* client);
 
 private:
-  std::map<std::string, std::string> env;
+  std::vector<std::string> env;
 };
 
 #endif
