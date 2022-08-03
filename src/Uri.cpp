@@ -252,27 +252,24 @@ std::string Uri::getPath() const { return "/" + path_; }
 
 std::string Uri::getRaw() const { return raw_; }
 
-std::string Uri::getDecodedPath() {
-  if (decoded_path_.empty()) {
-    std::string decoded = "/";
-    for (std::string::const_iterator it = path_.begin(); it != path_.end(); ++it) {
-      char c = *it;
-      switch (c) {
-        case '%':
-          if (it + 1 != path_.end() && it + 2 != path_.end()) {
-            char hs[3] = {it[1], it[2], 0};
-            decoded += static_cast<char>(strtol(hs, nullptr, 16));
-            it += 2;
-          }
-          break;
-        case '+':
-          decoded += ' ';
-          break;
-        default:
-          decoded += c;
-      }
+std::string Uri::getDecodedPath() const {
+  std::string decoded = "/";
+  for (std::string::const_iterator it = path_.begin(); it != path_.end(); ++it) {
+    char c = *it;
+    switch (c) {
+      case '%':
+        if (it + 1 != path_.end() && it + 2 != path_.end()) {
+          char hs[3] = {it[1], it[2], 0};
+          decoded += static_cast<char>(strtol(hs, nullptr, 16));
+          it += 2;
+        }
+        break;
+      case '+':
+        decoded += ' ';
+        break;
+      default:
+        decoded += c;
     }
-    decoded_path_ = decoded;
   }
-  return decoded_path_;
+  return decoded;
 }

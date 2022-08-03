@@ -43,7 +43,7 @@ Cgi::Cgi(Client* client, ServerConfig const* server_config, std::string const& m
   std::string gate_way2 = gate_way + "CGI/1.1";
   env.push_back(gate_way2);
   std::string path_translated = "PATH_TRANSLATED=";
-  std::string path_translated2 = path_translated + "" /*client->getRequest()->getUri()*/;  // TODO:
+  std::string path_translated2 = path_translated + client->getRequest()->getUri().getDecodedPath();
   env.push_back(path_translated2);
   std::string query_string = "QUERY_STRING=";
   std::string query_string2 = query_string + client->getRequest()->getUri().getQuery();

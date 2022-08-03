@@ -22,7 +22,7 @@ public:
   std::string getQuery() const;
   std::string getRaw() const;
   std::string getPath() const;
-  std::string getDecodedPath();
+  std::string getDecodedPath() const;
 
 private:
   enum parse_state {
@@ -47,7 +47,6 @@ private:
   std::string host_;
   std::string port_;
   std::string path_;
-  std::string decoded_path_;
   std::string query_;
   std::string fragment_;
 };
