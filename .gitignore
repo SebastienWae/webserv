@@ -38,3 +38,4 @@ webserv
 webserv_debug
 out/
 debug/
+*.dSYM
