@@ -178,9 +178,9 @@ File* Route::matchFile(std::string const& path) const {
   return file;
 }
 
-std::string Route::matchCGI(std::string const& file) const {
+File* Route::matchCGI(std::string const& file) const {
   if (cgi_.find(file) != cgi_.end()) {
     return (cgi_.find(file)->second);
   }
-  return ("");
+  return NULL;
 }

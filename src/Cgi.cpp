@@ -84,12 +84,13 @@ Cgi::Cgi() {}
 
 void Cgi::executeCgi(int const& kq, Client* client) {
   struct kevent kev;
-  char* arr[ENVLENGTH];
+  char* arr[env.size() + 1];
   for (std::vector<std::string>::iterator it = env.begin(); it != env.end(); ++it) {
     arr[std::distance(env.begin(), it)] = const_cast<char*>(it->c_str());
   }
+  arr[env.size()] = NULL;
   timespec timeout = {1, 0};
-  std::string templat = "WebServ";
+  std::string templat = "/tmp/WebServXXXXXX";
   std::string output;
   pid_t parent;
   int fd = mkstemp(const_cast<char*>(templat.c_str()));
@@ -100,11 +101,14 @@ void Cgi::executeCgi(int const& kq, Client* client) {
   } else if (n < 0) {
     ERROR(std::strerror(errno));
   }
+
   parent = fork();
   std::string test = "/goinfre/jperras/server/test.sh";
   if (parent == 0) {
     dup2(fd, STDOUT_FILENO);
     execve(test.c_str(), NULL, arr);
+    std::cout << std::strerror(errno) << std::endl;
+    exit(0);
   }
   close(fd);
 }
