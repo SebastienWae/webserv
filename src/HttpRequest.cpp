@@ -44,8 +44,10 @@ HttpRequest::HttpRequest(std::string const& raw)
             } else {
               status_ = S_BAD_REQUEST;
             }
-          } else {
+          } else if (method == "OPTIONS" || method == "PUT" || method == "TRACE" || method == "CONNECT") {
             status_ = S_NOT_IMPLEMENTED;
+          } else {
+            status_ = S_BAD_REQUEST;
           }
         } else {
           status_ = S_BAD_REQUEST;
@@ -85,6 +87,8 @@ HttpRequest::HttpRequest(std::string const& raw)
             } else {
               status_ = S_BAD_REQUEST;
             }
+          } else if (version.empty()) {
+            status_ = S_BAD_REQUEST;
           } else {
             status_ = S_HTTP_VERSION_NOT_SUPPORTED;
           }
