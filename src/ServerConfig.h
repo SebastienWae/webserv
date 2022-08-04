@@ -31,7 +31,6 @@ public:
   Route* matchRoute(Uri const* uri) const;
 
   std::string const& getHostname() const;
-  std::vector<Route*> const& getRoute() const;
   std::string const& getPort() const;
   std::string getHost() const;
 
