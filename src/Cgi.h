@@ -1,5 +1,9 @@
 #ifndef CGI_H
 #define CGI_H
+#include <netinet/in.h>
+#include <netinet/ip.h>
+#include <sys/socket.h>
+
 #include <iostream>
 #include <map>
 #include <string>
@@ -14,7 +18,7 @@ class Cgi {
 public:
   Cgi(Client* client, ServerConfig const* server_config, std::string const& method);
   ~Cgi();
-  void executeCgi(int const& kq, std::string const& path);
+  void executeCgi(std::string const& path);
 
 private:
   std::vector<std::string> env;

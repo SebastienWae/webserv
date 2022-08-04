@@ -1,8 +1,10 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
+#include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
+#include <signal.h>
 #include <sys/socket.h>
 
 #include <ctime>
@@ -12,7 +14,7 @@
 
 class Client {
 public:
-  Client(int socket);
+  Client(int socket, struct in_addr sin_addr);
 
   ~Client();
 
@@ -30,6 +32,7 @@ public:
   void send(unsigned int bytes) throw(WriteException);
 
   HttpRequest* getRequest() const;
+  struct in_addr getIp() const;
 
   void setResponseData(std::string const& data);
   void addResponseData(std::string const& data);
@@ -41,6 +44,9 @@ public:
   bool hasReplied() const;
   void setReplied();
 
+  void setCGIPID(int child);
+  int getCGIPID() const;
+
   std::time_t const& getTime() const;
 
 private:
@@ -51,6 +57,7 @@ private:
   bool reading_;
   bool replied_;
   struct in_addr ip_;
+  int child_;
 };
 
 #endif
