@@ -3,11 +3,14 @@
 #include <err.h>
 #include <fcntl.h>
 #include <malloc/_malloc.h>
+#include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/_types/_size_t.h>
 #include <sys/event.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <unistd.h>
 
 #include <__nullptr>
@@ -20,7 +23,6 @@
 #include <vector>
 
 #include "HttpRequest.h"
-#include "Log.h"
 #include "ServerConfig.h"
 
 Cgi::Cgi(Client* client, ServerConfig const* server_config, std::string const& method) {
@@ -49,7 +51,7 @@ Cgi::Cgi(Client* client, ServerConfig const* server_config, std::string const& m
   std::string query_string2 = query_string + uri->getQuery();
   env.push_back(query_string2);
   std::string remote_addr = "REMOTE_ADDR=";
-  std::string remote_addr2 = remote_addr + "";  // TODO:
+  std::string remote_addr2 = remote_addr + inet_ntoa(client->getIp());
   env.push_back(remote_addr2);
   std::string remote_host = "REMOTE_HOST=";
   std::string remote_host2 = remote_host + "";  // vide
@@ -86,35 +88,24 @@ Cgi::Cgi(Client* client, ServerConfig const* server_config, std::string const& m
   client_ = client;
 }
 
-void Cgi::executeCgi(int const& kq, std::string const& path) {
-  struct kevent kev;
+void Cgi::executeCgi(std::string const& path) {
   char* arr[env.size() + 1];
   for (std::vector<std::string>::iterator it = env.begin(); it != env.end(); ++it) {
     arr[std::distance(env.begin(), it)] = const_cast<char*>(it->c_str());
   }
   arr[env.size()] = NULL;
-  timespec timeout = {1, 0};
-  std::string templat = "/tmp/WebServXXXXXX";
-  std::string output;
+
   pid_t parent;
-  int fd = mkstemp(const_cast<char*>(templat.c_str()));
-  EV_SET(&kev, fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, reinterpret_cast<long>(client_), &timeout);
-  int n = kevent(kq, &kev, 1, NULL, 0, 0);
-  if (n == 0) {
-    INFO("CGI : Kevent timeout");
-  } else if (n < 0) {
-    ERROR(std::strerror(errno));
-  }
 
   parent = fork();
 
   if (parent == 0) {
-    dup2(fd, STDOUT_FILENO);
+    dup2(client_->getSocket(), STDOUT_FILENO);
     execve(path.c_str(), NULL, arr);
     std::cout << std::strerror(errno) << std::endl;
     exit(0);
   }
-  close(fd);
+  client_->setCGIPID(parent);
 }
 
 Cgi::~Cgi() {}

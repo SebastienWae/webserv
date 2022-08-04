@@ -1,5 +1,7 @@
 #include "Server.h"
 
+#include <sys/signal.h>
+
 #include <iostream>
 #include <vector>
 
@@ -42,8 +44,9 @@ void Server::start() {  // NOLINT
     int n_events = kevent(kq_, NULL, 0, events_, KQ_SIZE, &timeout);  // NOLINT
     if (n_events == 0) {
       for (std::map<int, Client*>::iterator it = clients_.begin(); it != clients_.end(); ++it) {
-        if (it->second->getTime() + TIMEOUT <= std::time(nullptr)) {
+        if (std::time(nullptr) - (*it).second->getTime() >= TIMEOUT) {
           timeoutClient(it->second);
+          break;
         }
       }
     } else if (n_events < 0) {
@@ -63,18 +66,15 @@ void Server::start() {  // NOLINT
             ERROR("Client not found");
           } else if ((events_[i].flags & EV_EOF) != 0 || client->hasReplied()) {
             removeClient(client);
+          } else if (std::time(nullptr) - client->getTime() >= TIMEOUT) {
+            timeoutClient(client);
           } else if (events_[i].filter == EVFILT_READ) {
-            // TODO : differenciate clients events and cgi events
-            if (client->getTime() + TIMEOUT <= std::time(nullptr)) {
-              timeoutClient(client);
-            } else {
-              client->read(events_[i].data);
-              if (!client->isReading()) {
-                updateEvents(socket, EVFILT_READ, EV_DELETE);
-                updateEvents(socket, EVFILT_WRITE, EV_ADD | EV_ENABLE);
-                processRequest(client);
-              }
+            client->read(events_[i].data);
+            if (!client->isReading()) {
+              processRequest(client);
+              updateEvents(client->getSocket(), EVFILT_READ, EV_DELETE);
             }
+
           } else if (events_[i].filter == EVFILT_WRITE) {
             if (!client->hasReplied()) {
               client->send(events_[i].data);
@@ -161,7 +161,7 @@ void Server::processRequest(Client* client) {
   }
 }
 
-void Server::getHandler(Client* client, ServerConfig const* server_config) {
+void Server::getHandler(Client* client, ServerConfig const* server_config) {  // NOLINT
   HttpRequest const* req = client->getRequest();
   Route const* route = server_config->matchRoute(req->getUri());
 
@@ -178,16 +178,15 @@ void Server::getHandler(Client* client, ServerConfig const* server_config) {
         File file(tmp);
         if (!file.exist()) {
           response = new HttpResponse(HttpResponseClientError::_404, server_config);
-        } else if (!file.isExecutable()) {
-          response = new HttpResponse(HttpResponseClientError::_403, server_config);
-        } else if (file.getType() != File::REG) {
+        } else if (!file.isExecutable() || file.getType() != File::REG) {
           response = new HttpResponse(HttpResponseClientError::_403, server_config);
         } else {
           Cgi cgitest(client, server_config, "GET");
-          cgitest.executeCgi(kq_, file.getPath());
+          cgitest.executeCgi(file.getPath());
           return;
         }
       } else {
+        updateEvents(client->getSocket(), EVFILT_WRITE, EV_ADD | EV_ENABLE);
         File* file = route->matchFile(req->getUri()->getPath());
         if (file != NULL && file->isReadable()) {
           if (file->getType() == File::REG) {
@@ -243,10 +242,9 @@ void Server::timeoutClient(Client* client) {
       client->setResponseData(timeout_response.getRaw());
       client->setRead();
     }
-
-    updateEvents(client->getSocket(), EVFILT_READ, EV_DELETE);
-    updateEvents(client->getSocket(), EVFILT_WRITE, EV_ADD | EV_ENABLE);
+    // TODO: handle no request
   }
+  removeClient(client);
 }
 
 void Server::listenToPort(std::string const& port) {
@@ -308,7 +306,6 @@ void Server::closeConnection(int socket) {
 }
 
 void Server::acceptConnection(int socket) {
-  // TODO : add IP to client object client_addr.in_addr;
   INFO("New connection");
 
   sockaddr_in client_addr;
@@ -318,7 +315,7 @@ void Server::acceptConnection(int socket) {
     return;
   }
 
-  clients_[connection_socket] = new Client(connection_socket);
+  clients_[connection_socket] = new Client(connection_socket, client_addr.sin_addr);
 
   fcntl(connection_socket, F_SETFL, O_NONBLOCK);
 
