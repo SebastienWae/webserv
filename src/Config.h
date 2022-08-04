@@ -13,9 +13,6 @@
 
 class Config {
 public:
-  Config(std::string const& config_path);
-  ~Config();
-
   class ParsingException : public std::exception {
   public:
     ParsingException(std::string const& msg) throw();
@@ -25,18 +22,22 @@ public:
   private:
     std::string msg_;
   };
-  void checkPort(std::string const& port);
-  void checkHostname(std::string const& hostname);
-  void parse(std::ifstream* file);
 
-  ServerConfig const* matchServerConfig(HttpRequest const* request) const;
+  Config(std::string const& config_path);
+  ~Config();
 
   std::set<std::string> getPorts() const;
+
+  ServerConfig const* matchServerConfig(HttpRequest const* request) const;
 
 private:
   enum parse_state { S_NONE, S_IN_SERVER };
 
   std::vector<ServerConfig*> servers_;
+
+  void parse(std::ifstream* file);
+  void checkPort(std::string const& port);
+  void checkHostname(std::string const& hostname);
 };
 
 #endif

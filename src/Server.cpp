@@ -6,7 +6,6 @@
 #include <vector>
 
 #include "Cgi.h"
-#include "Directory.h"
 #include "File.h"
 #include "Http.h"
 #include "HttpRequest.h"
@@ -187,7 +186,7 @@ void Server::getHandler(Client* client, ServerConfig const* server_config) {  //
         }
       } else {
         updateEvents(client->getSocket(), EVFILT_WRITE, EV_ADD | EV_ENABLE);
-        File* file = route->matchFile(req->getUri()->getPath());
+        File* file = route->matchFile(req->getUri());
         if (file != NULL && file->isReadable()) {
           if (file->getType() == File::REG) {
             response = new HttpResponse(HttpResponseSuccess::_200, file->getContent(), "text/html", server_config);

@@ -1,6 +1,10 @@
 #include "Route.h"
 
+#include <__nullptr>
 #include <cctype>
+#include <cstddef>
+#include <exception>
+#include <new>
 #include <string>
 
 #include "Http.h"
@@ -172,10 +176,22 @@ bool Route::isAllowedMethod(enum Http::method method) const {
   return m != allowed_methods_.end();
 }
 
-File* Route::matchFile(std::string const& path) const {
-  std::string absolute_path = root_->getPath() + path;
+bool Route::isDirectoryListing() const { return directory_listing_; }
+
+File* Route::matchFile(Uri const* uri) const {
+  std::string file_path;
+  std::string uri_path = uri->getDecodedPath();
+  std::string route_path = this->location_;
+  if (uri_path.size() > route_path.size()) {
+    file_path = uri_path.substr(route_path.size());
+  }
+  std::string absolute_path = root_->getPath() + "/" + file_path;
   File* file = new File(absolute_path);
-  return file;
+  if (file->exist()) {
+    return file;
+  }
+  delete file;
+  return nullptr;
 }
 
 File* Route::matchCGI(std::string const& file) const {
@@ -188,5 +204,5 @@ File* Route::matchCGI(std::string const& file) const {
       return (cgi_dir->second);
     }
   }
-  return NULL;
+  return nullptr;
 }

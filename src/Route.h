@@ -36,11 +36,12 @@ public:
   bool isRedirection() const;
   std::pair<HttpResponseRedir::code, Uri*> const& getRedirection() const;
 
+  bool isDirectoryListing() const;
+
   bool isAllowedMethod(enum Http::method method) const;
 
-  File* matchFile(std::string const& path) const;
-
-  File* matchCGI(std::string const& file) const;
+  File* matchFile(Uri const* uri) const;
+  File* matchCGI(std::string const& file) const;  // TODO: use Uri
 
 private:
   std::string const location_;
