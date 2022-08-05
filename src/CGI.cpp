@@ -9,7 +9,7 @@
 #include "Log.h"
 
 CGI::CGI(Client* client, ServerConfig const* server_config, File const* target, std::string const& method)
-    : target(target), client_(client) {
+    : target_(target), client_(client) {
   HttpRequest const* req = client->getRequest();
   Uri const* uri = req->getUri();
 
@@ -84,7 +84,7 @@ void CGI::execute() {
   pid = fork();
   if (pid == 0) {
     dup2(client_->getSocket(), STDOUT_FILENO);
-    execve(target->getPath().c_str(), NULL, arr);
+    execve(target_->getPath().c_str(), NULL, arr);
     std::exit(EXIT_FAILURE);
   }
   client_->setCGIPID(pid);

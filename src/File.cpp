@@ -7,6 +7,7 @@
 
 #include <cstddef>
 #include <fstream>
+#include <iomanip>
 #include <sstream>
 
 std::vector<std::pair<std::string const, std::string const> > initMimeFileType() {
@@ -269,21 +270,31 @@ std::string File::getListing(std::string const& url) {
   struct stat sb;
   struct dirent* ent;
 
-  // TODO : fixe file size
   if (stat()) {
     if (getType() == DI && isReadable()) {
-      html = "<html><head><base href='" + url + "/'><title>" + path_ + "</title></head><body><h1> Index of " + path_
+      html = "<html><head><base href='" + url + "/'><title>" + path_
+             + "</title><style>th {text-align: left;} table {width: 100%;}</style></head><body><h1> Index of " + path_
              + "</h1><hr><table><tr><th>Name</th><th>Size</th><th>Last Modified</th></tr>";
       DIR* dir = opendir(path_.c_str());
       while ((ent = readdir(dir)) != NULL) {
-        ::stat(path_.c_str(), &sb);
+        ::stat((path_ + "/" + ent->d_name).c_str(), &sb);
+        std::ostringstream size;
+        if (sb.st_size > 1000000000) {
+          size << std::setprecision(3) << sb.st_size * 0.000000001 << " GB";
+        } else if (sb.st_size > 1000000) {
+          size << std::setprecision(3) << sb.st_size * 0.000001 << " MB";
+        } else if (sb.st_size > 1000) {
+          size << std::setprecision(3) << sb.st_size * 0.001 << " kB";
+        } else {
+          size << sb.st_size << " B";
+        }
         html += "<tr>";
         html += "<td><a href=\"";
         html += ent->d_name;
         html += "\">";
         html += ent->d_name;
         html += "</a></td><td>";
-        html += std::to_string(sb.st_size);
+        html += size.str();
         html += "</td><td>";
         html += ctime(&sb.st_mtime);
         html += "</td>";

@@ -24,7 +24,6 @@ public:
   ~HttpResponse();
 
   std::string getHeaders() const;
-  // std::string getContent(std::size_t len);
   char* getContent(std::size_t len);
 
 private:
