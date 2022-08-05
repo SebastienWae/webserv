@@ -5,14 +5,19 @@
 #include <sys/socket.h>
 #include <sys/wait.h>
 
+#include <__nullptr>
+
 #include "HttpRequest.h"
+#include "HttpResponse.h"
 #include "Log.h"
 
 Client::Client(int socket, struct in_addr sin_addr)
     : socket_(socket),
       timestamp_(std::time(nullptr)),
       request_(NULL),
+      response_(nullptr),
       reading_(true),
+      replying_(false),
       replied_(false),
       ip_(sin_addr),
       child_(0) {}
@@ -20,6 +25,9 @@ Client::Client(int socket, struct in_addr sin_addr)
 Client::~Client() {
   if (child_ != 0) {
     kill(child_, SIGKILL);
+  }
+  if (response_ != nullptr) {
+    delete response_;
   }
 }
 
@@ -61,11 +69,16 @@ void Client::send(unsigned int bytes) throw(WriteException) {
     }
   } else {
     std::string response;
-    if (bytes == 0 || bytes >= response_data_.size()) {
-      response = response_data_;
-      replied_ = true;
+    if (replying_) {
+      try {
+        response = response_->getContent(bytes);
+      } catch (HttpResponse::EndOfResponseException& e) {
+        response = "\r\n";
+        replied_ = true;
+      }
     } else {
-      response = response_data_.substr(0, bytes);
+      response = response_->getHeaders();
+      replying_ = true;
     }
     std::size_t len = ::send(socket_, response.c_str(), response.size(), 0);
     if (len < 0) {
@@ -81,9 +94,7 @@ struct in_addr Client::getIp() const {
   return ip_;
 }
 
-void Client::setResponseData(std::string const& data) { response_data_ = data; }
-void Client::addResponseData(std::string const& data) { response_data_ += data; }
-std::size_t Client::getResponseSize() const { return response_data_.size(); }
+void Client::setReponse(HttpResponse* response) { response_ = response; }
 
 bool Client::isReading() const { return reading_; }
 void Client::setRead() { reading_ = false; }

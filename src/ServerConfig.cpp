@@ -1,6 +1,7 @@
 #include "ServerConfig.h"
 
 #include <cstddef>
+#include <exception>
 #include <limits>
 #include <vector>
 
@@ -29,7 +30,7 @@ ServerConfig::ParsingException::ParsingException(std::string const& msg) throw()
 ServerConfig::ParsingException::~ParsingException() throw() {}
 char const* ServerConfig::ParsingException::what() const throw() { return msg_.c_str(); }
 
-Route* ServerConfig::parse(std::string const& line) {
+Route* ServerConfig::parse(std::string const& line) {  // NOLINT
   std::string::size_type sep = line.find('=');
   if (sep != std::string::npos) {
     std::string key = line.substr(0, sep);
@@ -47,14 +48,16 @@ Route* ServerConfig::parse(std::string const& line) {
       File* file = new File(path);
       if (file->getType() == File::REG && file->isReadable() && file->getIStream() != NULL) {
         int code_i = std::atoi(code.c_str());
-        if ((code_i - 400) >= 0 && (code_i - 400) < (418 - 400)) {
-          std::pair<HttpResponseClientError::code, File*> page(static_cast<HttpResponseClientError::code>(code_i - 400),
-                                                               file);
+        if ((code_i - 400) >= 0 && (code_i - 400) < (418 - 400)) {  // NOLINT
+          std::pair<HttpResponseClientError::code, File*> page(
+              static_cast<HttpResponseClientError::code>(code_i - 400),  // NOLINT
+              file);
           client_errors_pages_.insert(page);
           return NULL;
-        } else if ((code_i - 500) >= 0 && (code_i - 500) < (506 - 500)) {
-          std::pair<HttpResponseServerError::code, File*> page(static_cast<HttpResponseServerError::code>(code_i - 500),
-                                                               file);
+        } else if ((code_i - 500) >= 0 && (code_i - 500) < (506 - 500)) {  // NOLINT
+          std::pair<HttpResponseServerError::code, File*> page(
+              static_cast<HttpResponseServerError::code>(code_i - 500),  // NOLINT
+              file);
           server_errors_pages_.insert(page);
           return NULL;
         } else {
@@ -65,15 +68,22 @@ Route* ServerConfig::parse(std::string const& line) {
       }
     }
     if (key == "route") {
-      // TODO: check uri
-      for (std::vector<Route*>::iterator it = routes_.begin(); it != routes_.end(); ++it) {
-        if ((*it)->getLocation() == value) {
-          return *it;
+      try {
+        Uri uri(value);
+        if (uri.getType() == Uri::TYPE_RELATIVE && uri.getQuery().empty()) {
+          for (std::vector<Route*>::iterator it = routes_.begin(); it != routes_.end(); ++it) {
+            if ((*it)->getLocation() == value) {
+              return *it;
+            }
+          }
+          Route* new_route = new Route(value);
+          routes_.push_back(new_route);
+          return new_route;
         }
+        throw ParsingException("Config file error at line: " + line);
+      } catch (std::exception& e) {
+        throw ParsingException("Config file error at line: " + line);
       }
-      Route* new_route = new Route(value);
-      routes_.push_back(new_route);
-      return new_route;
     }
   }
   throw ParsingException("Config file error at line: " + line);

@@ -260,7 +260,7 @@ std::string Uri::getDecodedPath() const {
       case '%':
         if (it + 1 != path_.end() && it + 2 != path_.end()) {
           char hs[3] = {it[1], it[2], 0};
-          decoded += static_cast<char>(strtol(hs, nullptr, 16));
+          decoded += static_cast<char>(strtol(hs, nullptr, 16));  // NOLINT
           it += 2;
         }
         break;

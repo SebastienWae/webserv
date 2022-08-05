@@ -11,6 +11,7 @@
 #include <exception>
 
 #include "HttpRequest.h"
+#include "HttpResponse.h"
 
 class Client {
 public:
@@ -34,9 +35,7 @@ public:
   HttpRequest* getRequest() const;
   struct in_addr getIp() const;
 
-  void setResponseData(std::string const& data);
-  void addResponseData(std::string const& data);
-  std::size_t getResponseSize() const;
+  void setReponse(HttpResponse* response);
 
   bool isReading() const;
   void setRead();
@@ -53,8 +52,9 @@ private:
   int socket_;
   std::time_t timestamp_;
   HttpRequest* request_;
-  std::string response_data_;
+  HttpResponse* response_;
   bool reading_;
+  bool replying_;
   bool replied_;
   struct in_addr ip_;
   int child_;

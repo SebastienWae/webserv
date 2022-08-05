@@ -48,7 +48,7 @@ TEST_CASE("valid config") {
       CHECK(root != nullptr);
       CHECK(root->exist());
       CHECK(root->isReadable());
-      CHECK(root->getType() == File::DIR);
+      CHECK(root->getType() == File::DI);
       CHECK(root->getPath() == "/goinfre/swaegene/webserv/tests/configs/http");
       File* directory_page = r->getDirecoryPage();
       CHECK(directory_page != nullptr);
@@ -62,12 +62,14 @@ TEST_CASE("valid config") {
       CHECK_FALSE(r->isAllowedMethod(Http::POST));
       CHECK_FALSE(r->isAllowedMethod(Http::HEAD));
       CHECK_FALSE(r->isAllowedMethod(Http::DELETE));
+      File* upload_store = r->getUploadStore();
+      CHECK(upload_store == nullptr);
       File* file = r->matchFile(&uri);
       CHECK(file != nullptr);
       CHECK(file->exist());
       CHECK(file->isReadable());
-      CHECK(file->getType() == File::DIR);
-      CHECK(file->getPath() == "/goinfre/swaegene/webserv/tests/configs/http/");
+      CHECK(file->getType() == File::DI);
+      CHECK(file->getPath() == "/goinfre/swaegene/webserv/tests/configs/http");
       delete file;
     }
     // http://254.0.0.155:42422/test.html
@@ -80,7 +82,7 @@ TEST_CASE("valid config") {
       CHECK(root != nullptr);
       CHECK(root->exist());
       CHECK(root->isReadable());
-      CHECK(root->getType() == File::DIR);
+      CHECK(root->getType() == File::DI);
       CHECK(root->getPath() == "/goinfre/swaegene/webserv/tests/configs/http");
       File* file = r->matchFile(&uri);
       CHECK(file != nullptr);
@@ -100,12 +102,33 @@ TEST_CASE("valid config") {
       CHECK(root != nullptr);
       CHECK(root->exist());
       CHECK(root->isReadable());
-      CHECK(root->getType() == File::DIR);
+      CHECK(root->getType() == File::DI);
       CHECK(root->getPath() == "/goinfre/swaegene/webserv/tests/configs/http");
       File* file = r->matchFile(&uri);
       file = r->matchFile(&uri);
       CHECK(file == nullptr);
     }
+    // http://254.0.0.155:42422/test.py
+    {
+      Uri uri("/test.py");
+      Route* r = sc->matchRoute(&uri);
+      CHECK(r != nullptr);
+      CHECK(r->getLocation() == "/");
+      File* root = r->getRoot();
+      CHECK(root != nullptr);
+      CHECK(root->exist());
+      CHECK(root->isReadable());
+      CHECK(root->getType() == File::DI);
+      CHECK(root->getPath() == "/goinfre/swaegene/webserv/tests/configs/http");
+      File* cgi_dir = r->matchCGI(&uri);
+      CHECK(cgi_dir != nullptr);
+      CHECK(cgi_dir->exist());
+      CHECK(cgi_dir->isReadable());
+      CHECK(cgi_dir->isExecutable());
+      CHECK(cgi_dir->getType() == File::DI);
+      CHECK(cgi_dir->getPath() == "/goinfre/swaegene/webserv/tests/configs/http/cgi");
+    }
+
     // cgi = r->matchCGI("/test.py");
     // CHECK(cgi != nullptr);
     // CHECK(cgi->exist());
@@ -128,7 +151,7 @@ TEST_CASE("valid config") {
       CHECK(root != nullptr);
       CHECK(root->exist());
       CHECK(root->isReadable());
-      CHECK(root->getType() == File::DIR);
+      CHECK(root->getType() == File::DI);
       CHECK(root->getPath() == "/");
       CHECK(r->isRedirection());
       CHECK(r->getRedirection().first == HttpResponseRedir::_302);
@@ -151,7 +174,7 @@ TEST_CASE("valid config") {
       CHECK(root != nullptr);
       CHECK(root->exist());
       CHECK(root->isReadable());
-      CHECK(root->getType() == File::DIR);
+      CHECK(root->getType() == File::DI);
       CHECK(root->getPath() == "/");
       CHECK(r->isRedirection());
       CHECK(r->getRedirection().first == HttpResponseRedir::_301);
@@ -176,10 +199,51 @@ TEST_CASE("valid config") {
       CHECK(file != nullptr);
       CHECK(file->exist());
       CHECK(file->isReadable());
-      CHECK(file->getType() == File::DIR);
+      CHECK(file->getType() == File::DI);
       CHECK(file->getPath() == "/goinfre/swaegene/webserv/tests/configs/http/subdir");
       CHECK(r->isDirectoryListing());
       delete file;
+    }
+    // http://254.0.0.155:42422/subdir/hello/test.html
+    {
+      Uri uri("/subdir/hello/test.hml");
+      Route* r = sc->matchRoute(&uri);
+      CHECK(r != nullptr);
+      CHECK(r->getLocation() == "/subdir");
+      File* root = r->getRoot();
+      CHECK(root != nullptr);
+      CHECK(root->exist());
+      CHECK(root->isReadable());
+      CHECK(root->getType() == File::DI);
+      CHECK(root->getPath() == "/goinfre/swaegene/webserv/tests/configs/http/subdir");
+      File* file = r->matchFile(&uri);
+      CHECK(file == nullptr);
+      delete file;
+    }
+    // http://254.0.0.155:42422/multi/
+    {
+      Uri uri("/multi/");
+      Route* r = sc->matchRoute(&uri);
+      CHECK(r != nullptr);
+      CHECK(r->getLocation() == "/multi");
+      CHECK(r->isAllowedMethod(Http::GET));
+      CHECK(r->isAllowedMethod(Http::POST));
+      CHECK_FALSE(r->isAllowedMethod(Http::HEAD));
+      CHECK(r->isAllowedMethod(Http::DELETE));
+      CHECK_FALSE(r->isRedirection());
+      File* file = r->matchFile(&uri);
+      CHECK(file != nullptr);
+      CHECK(file->exist());
+      CHECK(file->isReadable());
+      CHECK(file->getType() == File::DI);
+      CHECK(file->getPath() == "/goinfre/swaegene/webserv/tests/configs/http/sub/dir/test/");
+      CHECK_FALSE(r->isDirectoryListing());
+      delete file;
+      File* upload_store = r->getUploadStore();
+      CHECK(upload_store != nullptr);
+      CHECK(upload_store->exist());
+      CHECK(upload_store->isWritable());
+      CHECK(upload_store->getType() == File::DI);
     }
   }
 

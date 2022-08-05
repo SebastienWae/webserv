@@ -25,6 +25,9 @@ public:
     std::string msg_;
   };
 
+  class NotFoundException : public std::exception {};
+  class ForbiddenException : public std::exception {};
+
   void parse(std::string const& line);
   void verify() const;
 
@@ -41,7 +44,7 @@ public:
   bool isAllowedMethod(enum Http::method method) const;
 
   File* matchFile(Uri const* uri) const;
-  File* matchCGI(std::string const& file) const;  // TODO: use Uri
+  File* matchCGI(Uri const* uri) const;
 
 private:
   std::string const location_;

@@ -1,9 +1,14 @@
 #include "HttpResponse.h"
 
+#include <__nullptr>
+#include <cstddef>
+#include <ios>
+#include <limits>
 #include <map>
 #include <string>
 #include <utility>
 
+#include "File.h"
 #include "Http.h"
 #include "HttpResponseStatus.h"
 #include "ServerConfig.h"
@@ -11,7 +16,8 @@
 HttpResponse::HttpResponse(HttpResponseInfo::code status_code, ServerConfig const* server_config)
     : server_config_(server_config),
       status_code_(HttpResponseInfo::status.at(status_code).first),
-      reason_phrase_(HttpResponseInfo::status.at(status_code).second) {
+      reason_phrase_(HttpResponseInfo::status.at(status_code).second),
+      file_(nullptr) {
   headers_["connection"] = "close";
   headers_["content-length"] = "0";
 }
@@ -19,7 +25,8 @@ HttpResponse::HttpResponse(HttpResponseInfo::code status_code, ServerConfig cons
 HttpResponse::HttpResponse(HttpResponseSuccess::code status_code, ServerConfig const* server_config)
     : server_config_(server_config),
       status_code_(HttpResponseSuccess::status.at(status_code).first),
-      reason_phrase_(HttpResponseSuccess::status.at(status_code).second) {
+      reason_phrase_(HttpResponseSuccess::status.at(status_code).second),
+      file_(nullptr) {
   headers_["connection"] = "close";
   headers_["content-length"] = "0";
 }
@@ -29,14 +36,25 @@ HttpResponse::HttpResponse(HttpResponseSuccess::code status_code, std::string co
     : server_config_(server_config),
       status_code_(HttpResponseSuccess::status.at(status_code).first),
       reason_phrase_(HttpResponseSuccess::status.at(status_code).second),
-      body_(body) {
+      body_(body),
+      file_(nullptr) {
   headers_["content-type"] = content_type;
+  headers_["content-length"] = getContentLenght();
+}
+
+HttpResponse::HttpResponse(HttpResponseSuccess::code status_code, File* file, ServerConfig const* server_config)
+    : server_config_(server_config),
+      status_code_(HttpResponseSuccess::status.at(status_code).first),
+      reason_phrase_(HttpResponseSuccess::status.at(status_code).second),
+      file_(file) {
+  headers_["content-type"] = file_->getMimeType();
   headers_["content-length"] = getContentLenght();
 }
 
 HttpResponse::HttpResponse(HttpResponseRedir::code status_code, std::string const& location)
     : status_code_(HttpResponseRedir::status.at(status_code).first),
-      reason_phrase_(HttpResponseRedir::status.at(status_code).second) {
+      reason_phrase_(HttpResponseRedir::status.at(status_code).second),
+      file_(nullptr) {
   headers_["location"] = location;
   headers_["connection"] = "close";
   headers_["content-length"] = "0";
@@ -45,7 +63,8 @@ HttpResponse::HttpResponse(HttpResponseRedir::code status_code, std::string cons
 HttpResponse::HttpResponse(HttpResponseClientError::code status_code, ServerConfig const* server_config)
     : server_config_(server_config),
       status_code_(HttpResponseClientError::status.at(status_code).first),
-      reason_phrase_(HttpResponseClientError::status.at(status_code).second) {
+      reason_phrase_(HttpResponseClientError::status.at(status_code).second),
+      file_(nullptr) {
   if (server_config_ != NULL) {
     File* error_page = server_config_->getErrorPage(status_code);
     if (error_page != NULL) {
@@ -66,7 +85,8 @@ HttpResponse::HttpResponse(HttpResponseClientError::code status_code, ServerConf
 HttpResponse::HttpResponse(HttpResponseServerError::code status_code, ServerConfig const* server_config)
     : server_config_(server_config),
       status_code_(HttpResponseServerError::status.at(status_code).first),
-      reason_phrase_(HttpResponseServerError::status.at(status_code).second) {
+      reason_phrase_(HttpResponseServerError::status.at(status_code).second),
+      file_(nullptr) {
   if (server_config_ != NULL) {
     File* error_page = server_config_->getErrorPage(status_code);
     if (error_page != NULL) {
@@ -83,10 +103,19 @@ HttpResponse::HttpResponse(HttpResponseServerError::code status_code, ServerConf
   headers_["connection"] = "close";
   headers_["content-length"] = getContentLenght();
 }
-HttpResponse::~HttpResponse() {}
+HttpResponse::~HttpResponse() {
+  if (file_ != nullptr) {
+    delete file_;
+  }
+}
 
 std::string HttpResponse::getContentLenght() const {
-  std::string::size_type size = body_.size();
+  std::size_t size;
+  if (file_ != nullptr) {
+    size = file_->getSize();
+  } else {
+    size = body_.size();
+  }
   if (size > 0) {
     size += 2;
   }
@@ -95,7 +124,7 @@ std::string HttpResponse::getContentLenght() const {
   return len.str();
 }
 
-std::string HttpResponse::getRaw() const {
+std::string HttpResponse::getHeaders() const {
   std::string result;
 
   result.append(HTTP_VERSION);
@@ -115,9 +144,33 @@ std::string HttpResponse::getRaw() const {
 
   result.append(CRLF);
 
-  if (!body_.empty()) {
-    result.append(body_);
-    result.append(CRLF);
-  }
   return result;
+}
+
+std::string HttpResponse::getContent(std::size_t len) {
+  std::string response;
+  if (file_ != nullptr) {
+    if (len == 0 || len >= file_->getSize()) {
+      response = file_->getContent();
+    } else {
+      response.resize(len + 1);
+      if (file_->getIStream()->good()) {
+        file_->getIStream()->read(const_cast<char*>(response.c_str()), len);  // NOLINT
+      } else {
+        throw EndOfResponseException();
+      }
+    }
+  } else {
+    if (body_.empty()) {
+      throw EndOfResponseException();
+    }
+    if (len == 0 || len >= body_.size()) {
+      response = body_;
+      body_.erase();
+    } else {
+      response = body_.substr(0, len);
+      body_ = body_.substr(len + 1);
+    }
+  }
+  return response;
 }

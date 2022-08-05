@@ -2,10 +2,11 @@
 
 #include <sys/signal.h>
 
+#include <__nullptr>
 #include <iostream>
 #include <vector>
 
-#include "Cgi.h"
+#include "CGI.h"
 #include "File.h"
 #include "Http.h"
 #include "HttpRequest.h"
@@ -73,7 +74,6 @@ void Server::start() {  // NOLINT
               processRequest(client);
               updateEvents(client->getSocket(), EVFILT_READ, EV_DELETE);
             }
-
           } else if (events_[i].filter == EVFILT_WRITE) {
             if (!client->hasReplied()) {
               client->send(events_[i].data);
@@ -101,16 +101,14 @@ void Server::processRequest(Client* client) {
   switch (client->getRequest()->getStatus()) {
     case HttpRequest::S_NONE: {
       response = new HttpResponse(HttpResponseServerError::_500, server_config);
-      client->setResponseData(response->getRaw());
-      delete response;
+      client->setReponse(response);
       return;
     }
     case HttpRequest::S_OK: {
       switch (client->getRequest()->getMethod()) {
         case Http::UNKNOWN: {
           response = new HttpResponse(HttpResponseClientError::_400, server_config);
-          client->setResponseData(response->getRaw());
-          delete response;
+          client->setReponse(response);
           return;
         }
         case Http::GET:
@@ -129,121 +127,147 @@ void Server::processRequest(Client* client) {
     }
     case HttpRequest::S_CONTINUE: {  // this should not be possible
       response = new HttpResponse(HttpResponseServerError::_500, server_config);
-      client->setResponseData(response->getRaw());
-      delete response;
+      client->setReponse(response);
       return;
     }
     case HttpRequest::S_BAD_REQUEST: {
       response = new HttpResponse(HttpResponseClientError::_400, server_config);
-      client->setResponseData(response->getRaw());
-      delete response;
+      client->setReponse(response);
       return;
     }
     case HttpRequest::S_NOT_IMPLEMENTED: {
       response = new HttpResponse(HttpResponseServerError::_501, server_config);
-      client->setResponseData(response->getRaw());
-      delete response;
+      client->setReponse(response);
       return;
     }
     case HttpRequest::S_HTTP_VERSION_NOT_SUPPORTED: {
       response = new HttpResponse(HttpResponseServerError::_505, server_config);
-      client->setResponseData(response->getRaw());
-      delete response;
+      client->setReponse(response);
       return;
     }
     case HttpRequest::S_EXPECTATION_FAILED: {
       response = new HttpResponse(HttpResponseClientError::_417, server_config);
-      client->setResponseData(response->getRaw());
-      delete response;
+      client->setReponse(response);
       return;
     }
   }
 }
 
-void Server::getHandler(Client* client, ServerConfig const* server_config) {  // NOLINT
+void Server::getHandler(Client* client, ServerConfig const* server_config) {
   HttpRequest const* req = client->getRequest();
-  Route const* route = server_config->matchRoute(req->getUri());
+  Uri const* uri = req->getUri();
+  Route const* route = server_config->matchRoute(uri);
 
   HttpResponse* response;
   if (route->isAllowedMethod(Http::GET)) {
     if (route->isRedirection()) {
       response = new HttpResponse(route->getRedirection().first, route->getRedirection().second->getRaw());
     } else {
-      File* cgi_dir = route->matchCGI(req->getUri()->getDecodedPath());
-      if (cgi_dir != NULL && cgi_dir->exist() && cgi_dir->getType() == File::DIR && cgi_dir->isReadable()
-          && cgi_dir->isExecutable()) {
-        std::string tmp = cgi_dir->getPath() + client->getRequest()->getUri()->getPath();
-
-        File file(tmp);
-        if (!file.exist()) {
-          response = new HttpResponse(HttpResponseClientError::_404, server_config);
-        } else if (!file.isExecutable() || file.getType() != File::REG) {
-          response = new HttpResponse(HttpResponseClientError::_403, server_config);
+      try {
+        File* target = route->matchCGI(uri);
+        if (target == nullptr) {
+          target = route->matchFile(uri);
+          if (target->getType() == File::DI) {
+            response = new HttpResponse(HttpResponseSuccess::_200, target->getListing(uri->getRaw()), "text/html",
+                                        server_config);
+          } else {
+            response = new HttpResponse(HttpResponseSuccess::_200, target, server_config);
+          }
+          updateEvents(client->getSocket(), EVFILT_WRITE, EV_ADD | EV_ENABLE);
         } else {
-          Cgi cgitest(client, server_config, "GET");
-          cgitest.executeCgi(file.getPath());
+          CGI script(client, server_config, target, "GET");
+          script.execute();
           return;
         }
-      } else {
-        updateEvents(client->getSocket(), EVFILT_WRITE, EV_ADD | EV_ENABLE);
-        File* file = route->matchFile(req->getUri());
-        if (file != NULL && file->isReadable()) {
-          if (file->getType() == File::REG) {
-            response = new HttpResponse(HttpResponseSuccess::_200, file->getContent(), "text/html", server_config);
-          } else if (file->getType() == File::DIR) {
-            response = new HttpResponse(
-                HttpResponseSuccess::_200,
-                Directory::html(file->getPath(), server_config->getHost() + req->getUri()->getPath()), "text/html",
-                server_config);
-          } else {
-            // wrong type
-            response = new HttpResponse(HttpResponseSuccess::_200, server_config);
-          }
-        } else {
-          // wrong perm
-          response = new HttpResponse(HttpResponseSuccess::_200, server_config);
-        }
+      } catch (Route::NotFoundException) {
+        response = new HttpResponse(HttpResponseClientError::_404, server_config);
+      } catch (Route::ForbiddenException) {
+        response = new HttpResponse(HttpResponseClientError::_403, server_config);
       }
     }
   } else {
     response = new HttpResponse(HttpResponseClientError::_405, server_config);
   }
-
-  client->setResponseData(response->getRaw());
-  delete response;
+  client->setReponse(response);
 }
+
+// File* cgi_dir = route->matchCGI(req->getUri()->getDecodedPath());
+// if (cgi_dir != NULL && cgi_dir->exist() && cgi_dir->getType() == File::DIR && cgi_dir->isReadable()
+//     && cgi_dir->isExecutable()) {
+//   std::string tmp = cgi_dir->getPath() + client->getRequest()->getUri()->getPath();
+
+//   File file(tmp);
+//   if (!file.exist()) {
+//     response = new HttpResponse(HttpResponseClientError::_404, server_config);
+//   } else if (!file.isExecutable() || file.getType() != File::REG) {
+//     response = new HttpResponse(HttpResponseClientError::_403, server_config);
+//   } else {
+//     Cgi cgitest(client, server_config, "GET");
+//     cgitest.executeCgi(file.getPath());
+//     return;
+//   }
+// } else {
+//   updateEvents(client->getSocket(), EVFILT_WRITE, EV_ADD | EV_ENABLE);
+//   File* file = route->matchFile(req->getUri());
+//   if (file != NULL && file->isReadable()) {
+//     if (file->getType() == File::REG) {
+//       response = new HttpResponse(HttpResponseSuccess::_200, file->getContent(), "text/html", server_config);
+//     } else if (file->getType() == File::DIR) {
+//       response = new HttpResponse(HttpResponseSuccess::_200,
+//                                   Directory::html(file->getPath(), server_config->getHost() +
+//                                   req->getUri()->getPath()), "text/html", server_config);
+//     } else {
+//       // wrong type
+//       response = new HttpResponse(HttpResponseSuccess::_200, server_config);
+//     }
+//   } else {
+//     // wrong perm
+//     response = new HttpResponse(HttpResponseSuccess::_200, server_config);
+//   }
+// }
+// }
+// }
+// else {
+//   response = new HttpResponse(HttpResponseClientError::_405, server_config);
+// }
+
+// client->setReponse(response);
+// delete response;
+// }
 
 // TODO
 void Server::headHandler(Client* client, ServerConfig const* server_config) {
-  HttpResponse response(HttpResponseSuccess::_200, server_config);
-  client->setResponseData(response.getRaw());
+  HttpResponse* response = new HttpResponse(HttpResponseSuccess::_200, server_config);
+  client->setReponse(response);
 }
 
 // TODO
 void Server::postHandler(Client* client, ServerConfig const* server_config) {
-  HttpResponse response(HttpResponseSuccess::_200, server_config);
-  client->setResponseData(response.getRaw());
+  HttpResponse* response = new HttpResponse(HttpResponseSuccess::_200, server_config);
+  client->setReponse(response);
 }
 
 // TODO
 void Server::deleteHandler(Client* client, ServerConfig const* server_config) {
-  HttpResponse response(HttpResponseSuccess::_200, server_config);
-  client->setResponseData(response.getRaw());
+  HttpResponse* response = new HttpResponse(HttpResponseSuccess::_200, server_config);
+  client->setReponse(response);
 }
 
 void Server::timeoutClient(Client* client) {
   INFO("Timeout client");
   if (client->isReading()) {
+    HttpResponse* timeout_response;
     if (client->getRequest() != NULL) {
       ServerConfig const* server_config = config_.matchServerConfig(client->getRequest());
-      HttpResponse timeout_response(HttpResponseClientError::_408, server_config);
-
-      client->setResponseData(timeout_response.getRaw());
-      client->setRead();
+      timeout_response = new HttpResponse(HttpResponseClientError::_408, server_config);
+    } else {
+      timeout_response = new HttpResponse(HttpResponseClientError::_408, nullptr);
     }
-    // TODO: handle no request
+    client->setReponse(timeout_response);
+    client->setRead();
+  } else {
+    removeClient(client);
   }
-  removeClient(client);
 }
 
 void Server::listenToPort(std::string const& port) {

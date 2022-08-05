@@ -4,13 +4,14 @@
 #include <sys/_types/_timespec.h>
 #include <sys/stat.h>
 
+#include <cstddef>
 #include <fstream>
 #include <string>
 #include <vector>
 
 class File {
 public:
-  enum type { NONE, FIFO, CHR, DIR, BLK, REG, LNK, SOCK, WHT };
+  enum type { NONE, FIFO, CHR, DI, BLK, REG, LNK, SOCK, WHT };
 
   File(std::string const& path);
   ~File();
@@ -23,6 +24,8 @@ public:
   bool isWritable();
   bool isExecutable();
 
+  std::size_t getSize();
+
   enum type getType();
 
   struct timespec getLastAccess();
@@ -32,6 +35,8 @@ public:
 
   std::string getContent();
   std::string getMimeType();
+
+  std::string getListing(std::string const& url);
 
   std::ifstream* getIStream();
   std::ofstream* getOStream();

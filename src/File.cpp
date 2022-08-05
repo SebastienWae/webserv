@@ -1,8 +1,11 @@
 #include "File.h"
 
+#include <dirent.h>
 #include <sys/_types/_timespec.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
+#include <cstddef>
 #include <fstream>
 #include <sstream>
 
@@ -141,6 +144,13 @@ bool File::isExecutable() {
   return false;
 }
 
+std::size_t File::getSize() {
+  if (stat()) {
+    return stat_.st_size;
+  }
+  return 0;
+}
+
 enum File::type File::getType() {
   if (stat()) {
     if ((stat_.st_mode & S_IFIFO) != 0) {
@@ -150,7 +160,7 @@ enum File::type File::getType() {
       return CHR;
     }
     if ((stat_.st_mode & S_IFDIR) != 0) {
-      return DIR;
+      return DI;
     }
     if ((stat_.st_mode & S_IFBLK) != 0) {
       return BLK;
@@ -252,4 +262,35 @@ std::ofstream* File::getOStream() {
     output_stream_ = NULL;
   }
   return NULL;
+}
+
+std::string File::getListing(std::string const& url) {
+  std::string html;
+  struct stat sb;
+  struct dirent* ent;
+
+  if (stat()) {
+    if (getType() == DI && isReadable()) {
+      html = "<html><head><base href='" + url + "/'><title>" + path_ + "</title></head><body><h1> Index of " + path_
+             + "</h1><hr><table><tr><th>Name</th><th>Size</th><th>Last Modified</th></tr>";
+      DIR* dir = opendir(path_.c_str());
+      while ((ent = readdir(dir)) != NULL) {
+        ::stat(path_.c_str(), &sb);
+        html += "<tr>";
+        html += "<td><a href=\"";
+        html += ent->d_name;
+        html += "\">";
+        html += ent->d_name;
+        html += "</a></td><td>";
+        html += std::to_string(sb.st_size);
+        html += "</td><td>";
+        html += ctime(&sb.st_mtime);
+        html += "</td>";
+        html += "</tr>";
+      }
+      closedir(dir);
+      html += "</table> <hr></body></html> ";
+    }
+  }
+  return html;
 }
