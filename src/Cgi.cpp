@@ -1,111 +1,91 @@
-#include "Cgi.h"
+#include "CGI.h"
 
-#include <err.h>
-#include <fcntl.h>
-#include <malloc/_malloc.h>
-#include <netinet/in.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/_types/_size_t.h>
-#include <sys/event.h>
-#include <sys/socket.h>
-#include <sys/un.h>
+#include <sys/errno.h>
 #include <unistd.h>
 
-#include <__nullptr>
-#include <cstddef>
-#include <cstdio>
+#include <cstdlib>
 #include <cstring>
-#include <iostream>
-#include <iterator>
-#include <string>
-#include <vector>
 
-#include "HttpRequest.h"
-#include "ServerConfig.h"
+#include "Log.h"
 
-Cgi::Cgi(Client* client, ServerConfig const* server_config, std::string const& method) {
+CGI::CGI(Client* client, ServerConfig const* server_config, File const* target, std::string const& method)
+    : target(target), client_(client) {
   HttpRequest const* req = client->getRequest();
   Uri const* uri = req->getUri();
 
   std::map<std::string, std::string> headers = req->getHeaders();
+
   std::string auth = "AUTH_TYPE=";
-  std::string auth2 = auth + "";
-  env.push_back(auth2);
-  std::string content_lenght = "CONTENT_LENGTH=";
-  std::string content_lenght2 = content_lenght + headers["content-lenght"];
-  env.push_back(content_lenght);
-  std::string content_type = "CONTENT_TYPE=";
-  std::string content_type2 = content_type + headers["content-type"];
-  env.push_back(content_type2);
-  std::string gate_way = "GATEWAY_INTERFACE=";
-  std::string gate_way2 = gate_way + "CGI/1.1";
-  env.push_back(gate_way2);
-  std::string path_translated = "PATH_TRANSLATED=";
-  std::string path_translated2 = path_translated
-                                 + server_config->matchRoute(uri)->matchCGI(uri->getDecodedPath())->getPath()
-                                 + uri->getDecodedPath();
-  env.push_back(path_translated2);
-  std::string query_string = "QUERY_STRING=";
-  std::string query_string2 = query_string + uri->getQuery();
-  env.push_back(query_string2);
-  std::string remote_addr = "REMOTE_ADDR=";
-  std::string remote_addr2 = remote_addr + inet_ntoa(client->getIp());
-  env.push_back(remote_addr2);
+  env_.push_back(auth);
+
+  std::string content_lenght = "CONTENT_LENGTH=" + headers["content-lenght"];
+  env_.push_back(content_lenght);
+
+  std::string content_type = "CONTENT_TYPE=" + headers["content-type"];
+  env_.push_back(content_type);
+
+  std::string gate_way = "GATEWAY_INTERFACE=CGI/1.1";
+  env_.push_back(gate_way);
+
+  std::string path_translated
+      = "PATH_TRANSLATED=" + server_config->matchRoute(uri)->matchCGI(uri)->getPath() + uri->getDecodedPath();
+  env_.push_back(path_translated);
+
+  std::string query_string = "QUERY_STRING=" + uri->getQuery();
+  env_.push_back(query_string);
+
+  std::string remote_addr = "REMOTE_ADDR=" + static_cast<std::string>(inet_ntoa(client->getIp()));
+  env_.push_back(remote_addr);
+
   std::string remote_host = "REMOTE_HOST=";
-  std::string remote_host2 = remote_host + "";  // vide
-  env.push_back(remote_host2);
+  env_.push_back(remote_host);
+
   std::string remote_ident = "REMOTE_IDENT=";
-  std::string remote_ident2 = remote_ident + "";  // vide
-  env.push_back(remote_ident2);
+  env_.push_back(remote_ident);
+
   std::string remote_user = "REMOTE_USER=";
-  std::string remote_user2 = remote_user + "";  // vide
-  env.push_back(remote_user2);
-  std::string request_method = "REQUEST_METHOD=";
-  std::string request_method2 = request_method + method;
-  env.push_back(request_method2);
-  std::string scipt_name = "SCRIPT_NAME=";
-  std::string scipt_name2 = scipt_name + uri->getPath();
-  env.push_back(scipt_name2);
-  std::string server_name = "SERVER_NAME=";
-  std::string server_name2 = server_name + server_config->getHostname();
-  env.push_back(server_name2);
-  std::string server_port = "SERVER_PORT=";
-  std::string server_port2 = server_port + server_config->getPort();
-  env.push_back(server_port2);
-  std::string server_protocol = "SERVER_PROTOCOL=";
-  std::string server_protocol2 = server_protocol + "HTTP/1.1";
-  env.push_back(server_protocol2);
+  env_.push_back(remote_user);
+
+  std::string request_method = "REQUEST_METHOD=" + method;
+  env_.push_back(request_method);
+
+  std::string scipt_name = "SCRIPT_NAME=" + uri->getPath();
+  env_.push_back(scipt_name);
+
+  std::string server_name = "SERVER_NAME=" + server_config->getHostname();
+  env_.push_back(server_name);
+
+  std::string server_port = "SERVER_PORT=" + server_config->getPort();
+  env_.push_back(server_port);
+
+  std::string server_protocol = "SERVER_PROTOCOL=HTTP/1.1";
+  env_.push_back(server_protocol);
+
   std::string server_software = "SERVER_SOFTWARE=";
-  std::string server_software2 = server_software + "";
-  env.push_back(server_software2);
+  env_.push_back(server_software);
+
   for (std::map<std::string, std::string>::iterator it = headers.begin(); it != headers.end(); ++it) {
     if (it->first != "authentication" && it->first != "content-lenght" && it->first != "content-type") {
-      env.push_back("HTTP_" + it->first + "=" + it->second);
+      env_.push_back("HTTP_" + it->first + "=" + it->second);
     }
   }
-  client_ = client;
 }
 
-void Cgi::executeCgi(std::string const& path) {
-  char* arr[env.size() + 1];
-  for (std::vector<std::string>::iterator it = env.begin(); it != env.end(); ++it) {
-    arr[std::distance(env.begin(), it)] = const_cast<char*>(it->c_str());
+CGI::~CGI() {}
+
+void CGI::execute() {
+  char* arr[env_.size() + 1];
+  for (std::vector<std::string>::iterator it = env_.begin(); it != env_.end(); ++it) {
+    arr[std::distance(env_.begin(), it)] = const_cast<char*>(it->c_str());
   }
-  arr[env.size()] = NULL;
+  arr[env_.size()] = NULL;
 
-  pid_t parent;
-
-  parent = fork();
-
-  if (parent == 0) {
+  pid_t pid;
+  pid = fork();
+  if (pid == 0) {
     dup2(client_->getSocket(), STDOUT_FILENO);
-    execve(path.c_str(), NULL, arr);
-    std::cout << std::strerror(errno) << std::endl;
-    exit(0);
+    execve(target->getPath().c_str(), NULL, arr);
+    std::exit(EXIT_FAILURE);
   }
-  client_->setCGIPID(parent);
+  client_->setCGIPID(pid);
 }
-
-Cgi::~Cgi() {}

@@ -42,7 +42,7 @@ void Route::parse(std::string const& line) {  // NOLINT
 
     if (key == "root") {
       File* root_dir = new File(value);
-      if (root_dir->getType() == File::DIR && root_dir->isReadable()) {
+      if (root_dir->getType() == File::DI && root_dir->isReadable()) {
         root_ = root_dir;
       } else {
         delete root_dir;
@@ -64,8 +64,8 @@ void Route::parse(std::string const& line) {  // NOLINT
       }
     } else if (key == "upload_store") {
       File* store = new File(value);
-      if (store->getType() == File::DIR && store->isReadable() && store->isWritable()) {
-        directory_page_ = store;
+      if (store->getType() == File::DI && store->isReadable() && store->isWritable()) {
+        upload_store_ = store;
       } else {
         delete store;
         throw ParsingException("Config file error at line: " + line);
@@ -102,8 +102,8 @@ void Route::parse(std::string const& line) {  // NOLINT
         std::string path = value.substr(sep + 1);
 
         int code_i = std::atoi(code.c_str());
-        if ((code_i - 300) >= 0 && (code_i - 300) < (307 - 300)) {
-          redirection_.first = static_cast<HttpResponseRedir::code>(code_i - 300);
+        if ((code_i - 300) >= 0 && (code_i - 300) < (307 - 300)) {                  // NOLINT
+          redirection_.first = static_cast<HttpResponseRedir::code>(code_i - 300);  // NOLINT
         } else {
           throw ParsingException("Config file error at line: " + line);
         }
@@ -132,7 +132,7 @@ void Route::parse(std::string const& line) {  // NOLINT
         std::string path = value.substr(sep + 1);
         if (cgi_.find(ext) == cgi_.end()) {
           File* cgi_dir = new File(path);
-          if (cgi_dir->getType() == File::DIR && cgi_dir->isReadable() && cgi_dir->isExecutable()) {
+          if (cgi_dir->getType() == File::DI && cgi_dir->isReadable() && cgi_dir->isExecutable()) {
             std::pair<std::string, File*> new_cgi(ext, cgi_dir);
             cgi_.insert(new_cgi);
           } else {
@@ -185,23 +185,51 @@ File* Route::matchFile(Uri const* uri) const {
   if (uri_path.size() > route_path.size()) {
     file_path = uri_path.substr(route_path.size());
   }
-  std::string absolute_path = root_->getPath() + "/" + file_path;
-  File* file = new File(absolute_path);
-  if (file->exist()) {
-    return file;
+  if (!file_path.empty()) {
+    file_path = "/" + file_path;
   }
-  delete file;
-  return nullptr;
+  std::string absolute_path = root_->getPath() + file_path;
+  File* file = new File(absolute_path);
+  if (file == nullptr || !file->exist()) {
+    delete file;
+    throw NotFoundException();
+  }
+  if (!file->isReadable() && (file->getType() != File::REG || file->getType() != File::DI)) {
+    delete file;
+    throw ForbiddenException();
+  }
+  return file;
 }
 
-File* Route::matchCGI(std::string const& file) const {
-  std::string::size_type sep = file.find_last_of('.');
+File* Route::matchCGI(Uri const* uri) const {
+  std::string uri_path = uri->getDecodedPath();
+  std::string::size_type sep = uri_path.find_last_of('.');
   if (sep != std::string::npos) {
-    std::string ext = file.substr(sep);
-    std::map<std::string, File*>::const_iterator cgi_dir = cgi_.find(ext);
-
-    if (cgi_dir != cgi_.end()) {
-      return (cgi_dir->second);
+    std::string ext = uri_path.substr(sep);
+    std::map<std::string, File*>::const_iterator cgi = cgi_.find(ext);
+    if (cgi != cgi_.end()) {
+      File* cgi_dir = cgi->second;
+      if (cgi_dir != nullptr && cgi_dir->exist() && cgi_dir->isExecutable() && cgi_dir->isReadable()) {
+        std::string file_path;
+        std::string route_path = this->location_;
+        if (uri_path.size() > route_path.size()) {
+          file_path = uri_path.substr(route_path.size());
+        }
+        if (!file_path.empty()) {
+          file_path = "/" + file_path;
+        }
+        std::string absolute_path = root_->getPath() + file_path;
+        File* script = new File(absolute_path);
+        if (script == nullptr || !script->exist()) {
+          delete script;
+          throw NotFoundException();
+        }
+        if (!script->isExecutable()) {
+          delete script;
+          throw ForbiddenException();
+        }
+        return script;
+      }
     }
   }
   return nullptr;

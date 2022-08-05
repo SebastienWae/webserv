@@ -1,7 +1,6 @@
 #include <exception>
 #include <iostream>
 
-#include "Cgi.h"
 #include "Config.h"
 #include "Server.h"
 void run(Config const& config) {

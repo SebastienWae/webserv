@@ -135,8 +135,8 @@ std::set<std::string> Config::getPorts() const {
   return ports;
 }
 
-void Config::checkPort(std::string const& port) {
-  if (port.size() > 5) {
+void Config::checkPort(std::string const& port) {  // NOLINT
+  if (port.size() > 5) {                           // NOLINT
     throw Config::ParsingException("Too long port");
   }
 
@@ -157,7 +157,7 @@ void Config::checkPort(std::string const& port) {
         || port[3] > '9' || port[3] < '0') {
       throw Config::ParsingException("Invalid port");
     }
-  } else if (port.size() == 5) {
+  } else if (port.size() == 5) {  // NOLINT
     if (port[0] > '9' || port[0] < '0' || port[1] > '9' || port[1] < '0' || port[2] > '9' || port[2] < '0'
         || port[3] > '9' || port[3] < '0' || port[4] > '9' || port[4] < '0') {
       throw Config::ParsingException("Invalid port");
@@ -177,7 +177,7 @@ void Config::checkPort(std::string const& port) {
   }
 }
 
-void Config::checkHostname(const std::string& hostname) {
+void Config::checkHostname(const std::string& hostname) {  // NOLINT
   std::vector<std::string> tmp;
   size_t start = 0;
   size_t end = 0;
