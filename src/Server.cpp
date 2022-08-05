@@ -168,8 +168,8 @@ void Server::getHandler(Client* client, ServerConfig const* server_config) {
         if (target == nullptr) {
           target = route->matchFile(uri);
           if (target->getType() == File::DI) {
-            response = new HttpResponse(HttpResponseSuccess::_200, target->getListing(uri->getRaw()), "text/html",
-                                        server_config);
+            response = new HttpResponse(HttpResponseSuccess::_200, target->getListing(uri->getDecodedPath()),
+                                        "text/html", server_config);
           } else {
             response = new HttpResponse(HttpResponseSuccess::_200, target, server_config);
           }
@@ -181,8 +181,10 @@ void Server::getHandler(Client* client, ServerConfig const* server_config) {
         }
       } catch (Route::NotFoundException) {
         response = new HttpResponse(HttpResponseClientError::_404, server_config);
+        updateEvents(client->getSocket(), EVFILT_WRITE, EV_ADD | EV_ENABLE);
       } catch (Route::ForbiddenException) {
         response = new HttpResponse(HttpResponseClientError::_403, server_config);
+        updateEvents(client->getSocket(), EVFILT_WRITE, EV_ADD | EV_ENABLE);
       }
     }
   } else {

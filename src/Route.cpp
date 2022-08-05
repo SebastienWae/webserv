@@ -185,7 +185,7 @@ File* Route::matchFile(Uri const* uri) const {
   if (uri_path.size() > route_path.size()) {
     file_path = uri_path.substr(route_path.size());
   }
-  if (!file_path.empty() && file_path.at(0) != '/') {
+  if (!file_path.empty()) {
     file_path = "/" + file_path;
   }
   std::string absolute_path = root_->getPath() + file_path;
@@ -215,7 +215,7 @@ File* Route::matchCGI(Uri const* uri) const {
         if (uri_path.size() > route_path.size()) {
           file_path = uri_path.substr(route_path.size());
         }
-        if (!file_path.empty() && file_path.at(0) != '/') {
+        if (!file_path.empty()) {
           file_path = "/" + file_path;
         }
         std::string absolute_path = root_->getPath() + file_path;

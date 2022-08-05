@@ -24,7 +24,8 @@ public:
   ~HttpResponse();
 
   std::string getHeaders() const;
-  std::string getContent(std::size_t len);
+  // std::string getContent(std::size_t len);
+  char* getContent(std::size_t len);
 
 private:
   ServerConfig const* server_config_;

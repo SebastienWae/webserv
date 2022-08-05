@@ -116,9 +116,6 @@ std::string HttpResponse::getContentLenght() const {
   } else {
     size = body_.size();
   }
-  if (size > 0) {
-    size += 2;
-  }
   std::ostringstream len;
   len << size;
   return len.str();
@@ -147,28 +144,51 @@ std::string HttpResponse::getHeaders() const {
   return result;
 }
 
-std::string HttpResponse::getContent(std::size_t len) {
-  std::string response;
+// std::string HttpResponse::getContent(std::size_t len) {
+//   std::string response;
+//   if (file_ != nullptr) {
+//     len = len == 0 ? 1 : len;
+//     response.resize(len + 1);
+//     if (file_->getIStream()->good() || !file_->getIStream()->eof()) {
+//       file_->getIStream()->read(const_cast<char*>(response.c_str()), len);  // NOLINT
+//     } else {
+//       throw EndOfResponseException();
+//     }
+//   } else {
+//     if (body_.empty()) {
+//       throw EndOfResponseException();
+//     }
+//     if (len == 0 || len >= body_.size()) {
+//       response = body_;
+//       body_.erase();
+//     } else {
+//       response = body_.substr(0, len);
+//       body_ = body_.substr(len + 1);
+//     }
+//   }
+//   return response;
+// }
+
+#include <stdlib.h>
+char* HttpResponse::getContent(std::size_t len) {
+  char* response = reinterpret_cast<char*>(std::malloc((len + 1) * sizeof(char)));
   if (file_ != nullptr) {
-    if (len == 0 || len >= file_->getSize()) {
-      response = file_->getContent();
+    len = len == 0 ? 1 : len;
+    if (file_->getIStream()->good() || !file_->getIStream()->eof()) {
+      file_->getIStream()->read(response, len);  // NOLINT
+      response[len] = 0;
     } else {
-      response.resize(len + 1);
-      if (file_->getIStream()->good()) {
-        file_->getIStream()->read(const_cast<char*>(response.c_str()), len);  // NOLINT
-      } else {
-        throw EndOfResponseException();
-      }
+      throw EndOfResponseException();
     }
   } else {
     if (body_.empty()) {
       throw EndOfResponseException();
     }
     if (len == 0 || len >= body_.size()) {
-      response = body_;
+      // response = body_.c_str();
       body_.erase();
     } else {
-      response = body_.substr(0, len);
+      // response = body_.substr(0, len);
       body_ = body_.substr(len + 1);
     }
   }

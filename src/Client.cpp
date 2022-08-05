@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 
 #include <__nullptr>
+#include <cstring>
 
 #include "HttpRequest.h"
 #include "HttpResponse.h"
@@ -71,10 +72,12 @@ void Client::send(unsigned int bytes) throw(WriteException) {
     std::string response;
     if (replying_) {
       try {
-        response = response_->getContent(bytes);
+        char* r = response_->getContent(bytes);
+        ::send(socket_, r, strlen(r), 0);
+        return;
       } catch (HttpResponse::EndOfResponseException& e) {
-        response = "\r\n";
         replied_ = true;
+        return;
       }
     } else {
       response = response_->getHeaders();

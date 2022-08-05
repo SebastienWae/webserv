@@ -248,9 +248,17 @@ std::string Uri::getPort() const { return port_; }
 
 std::string Uri::getQuery() const { return query_; }
 
-std::string Uri::getPath() const { return "/" + path_; }
-
 std::string Uri::getRaw() const { return raw_; }
+
+std::string Uri::getPath() const {
+  std::string result;
+  if (path_.back() == '/') {
+    result = path_.substr(0, path_.size() - 1);
+  } else {
+    result = path_;
+  }
+  return "/" + result;
+}
 
 std::string Uri::getDecodedPath() const {
   std::string decoded = "/";
@@ -270,6 +278,9 @@ std::string Uri::getDecodedPath() const {
       default:
         decoded += c;
     }
+  }
+  if (decoded.back() == '/') {
+    decoded = decoded.substr(0, decoded.size() - 1);
   }
   return decoded;
 }

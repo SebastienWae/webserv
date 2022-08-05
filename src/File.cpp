@@ -269,6 +269,7 @@ std::string File::getListing(std::string const& url) {
   struct stat sb;
   struct dirent* ent;
 
+  // TODO : fixe file size
   if (stat()) {
     if (getType() == DI && isReadable()) {
       html = "<html><head><base href='" + url + "/'><title>" + path_ + "</title></head><body><h1> Index of " + path_

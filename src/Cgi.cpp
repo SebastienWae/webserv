@@ -1,8 +1,12 @@
 #include "CGI.h"
 
+#include <sys/errno.h>
 #include <unistd.h>
 
 #include <cstdlib>
+#include <cstring>
+
+#include "Log.h"
 
 CGI::CGI(Client* client, ServerConfig const* server_config, File const* target, std::string const& method)
     : target(target), client_(client) {
