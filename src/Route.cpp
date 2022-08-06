@@ -209,7 +209,8 @@ File* Route::matchCGI(Uri const* uri) const {
     std::map<std::string, File*>::const_iterator cgi = cgi_.find(ext);
     if (cgi != cgi_.end()) {
       File* cgi_dir = cgi->second;
-      if (cgi_dir != nullptr && cgi_dir->exist() && cgi_dir->isExecutable() && cgi_dir->isReadable()) {
+      if (cgi_dir != nullptr && cgi_dir->exist() && cgi_dir->getType() == File::DI && cgi_dir->isExecutable()
+          && cgi_dir->isReadable()) {
         std::string file_path;
         std::string route_path = this->location_;
         if (uri_path.size() > route_path.size()) {
@@ -220,7 +221,7 @@ File* Route::matchCGI(Uri const* uri) const {
         }
         std::string absolute_path = root_->getPath() + file_path;
         File* script = new File(absolute_path);
-        if (script == nullptr || !script->exist()) {
+        if (script == nullptr || !script->exist() || !(script->getType() == File::REG)) {
           delete script;
           throw NotFoundException();
         }

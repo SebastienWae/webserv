@@ -15,6 +15,7 @@ class Config {
 public:
   class ParsingException : public std::exception {
   public:
+    ParsingException() throw();
     ParsingException(std::string const& msg) throw();
     ~ParsingException() throw();
     virtual const char* what() const throw();
@@ -36,8 +37,6 @@ private:
   std::vector<ServerConfig*> servers_;
 
   void parse(std::ifstream* file);
-  void checkPort(std::string const& port);
-  void checkHostname(std::string const& hostname);
 };
 
 #endif

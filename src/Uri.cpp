@@ -99,7 +99,7 @@ Uri::Uri(std::string const& uri) throw(UriParsingException) : type_(Uri::TYPE_NO
           }
           break;
         }
-        case STATE_HOSTNAME: {
+        case STATE_HOSTNAME: {  // TODO: validate hostname
           if (std::isalnum(*it) != 0 || *it == '.' || *it == '-' || *it == '!' || *it == '$' || *it == '&'
               || *it == '\'' || *it == '(' || *it == ')' || *it == '*' || *it == '+' || *it == ',' || *it == ';'
               || *it == '=') {
@@ -126,7 +126,7 @@ Uri::Uri(std::string const& uri) throw(UriParsingException) : type_(Uri::TYPE_NO
           }
           break;
         }
-        case STATE_IPV4ADDRESS: {
+        case STATE_IPV4ADDRESS: {  // TODO: validate IP
           if (std::isdigit(*it) != 0 || *it == '.') {
             ++it;
             if (it == uri.end() || *it == '/' || *it == ':' || *it == '?' || *it == '#') {

@@ -37,6 +37,9 @@ Route* ServerConfig::parse(std::string const& line) {  // NOLINT
     std::string value = line.substr(sep + 1);
 
     if (key == "max_body_size") {
+      if (value.empty()) {
+        throw ParsingException("Config file error at line: " + line);
+      }
       max_body_size_ = std::atoi(value.c_str());
       return NULL;
     }
@@ -151,7 +154,7 @@ Route* ServerConfig::matchRoute(Uri const* uri) const {  // NOLINT
 std::string const& ServerConfig::getHostname() const { return hostname_; }
 std::string const& ServerConfig::getPort() const { return port_; }
 
-std::string ServerConfig::getHost() const { return "http://" + hostname_ + (port_ != "80" ? ":" + port_ : ""); }
+std::string ServerConfig::getHost() const { return hostname_ + ":" + port_; }
 
 File* ServerConfig::getErrorPage(HttpResponseClientError::code code) const {
   std::map<HttpResponseClientError::code, File*>::const_iterator error_page = client_errors_pages_.find(code);
