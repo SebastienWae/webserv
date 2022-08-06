@@ -6,7 +6,7 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "Log.h"
+#include "File.h"
 
 CGI::CGI(Client* client, ServerConfig const* server_config, File const* target, std::string const& method)
     : target_(target), client_(client) {
@@ -80,12 +80,31 @@ void CGI::execute() {
   }
   arr[env_.size()] = NULL;
 
+  // TODO: check pipe return
+  int pipe_fd[2];
+  pipe(pipe_fd);
+
   pid_t pid;
   pid = fork();
   if (pid == 0) {
+    close(pipe_fd[1]);
+    dup2(pipe_fd[0], STDIN_FILENO);
+
     dup2(client_->getSocket(), STDOUT_FILENO);
+
     execve(target_->getPath().c_str(), NULL, arr);
+
+    close(pipe_fd[0]);
     std::exit(EXIT_FAILURE);
+  } else {
+    // TODO: handle large content
+    close(pipe_fd[0]);
+
+    std::string content = client_->getRequest()->getBody();
+    write(pipe_fd[1], content.c_str(), content.size());
+
+    close(pipe_fd[1]);
+
+    client_->setCGIPID(pid);
   }
-  client_->setCGIPID(pid);
 }

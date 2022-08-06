@@ -212,6 +212,7 @@ struct timespec File::getCreation() {
 
 std::string File::getContent() {
   if (stat() && getType() == REG && isReadable()) {
+    getIStream()->seekg(0);
     std::stringstream buffer;
     buffer << getIStream()->rdbuf();
     return buffer.str();

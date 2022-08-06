@@ -31,6 +31,7 @@ HttpResponse::HttpResponse(HttpResponseSuccess::code status_code, ServerConfig c
       file_(nullptr) {
   headers_["connection"] = "close";
   headers_["content-length"] = "0";
+  headers_["content-type"] = "text/plain";
 }
 
 HttpResponse::HttpResponse(HttpResponseSuccess::code status_code, std::string const& body,
@@ -105,6 +106,7 @@ HttpResponse::HttpResponse(HttpResponseServerError::code status_code, ServerConf
   headers_["connection"] = "close";
   headers_["content-length"] = getContentLenght();
 }
+
 HttpResponse::~HttpResponse() {
   if (file_ != nullptr) {
     delete file_;
@@ -153,7 +155,6 @@ char* HttpResponse::getContent(std::size_t len) {
       len = len == 0 ? 1 : len;
       if (file_->getIStream()->good() || !file_->getIStream()->eof()) {
         file_->getIStream()->read(response, len);  // NOLINT
-        response[len] = 0;
       } else {
         throw EndOfResponseException();
       }
