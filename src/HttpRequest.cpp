@@ -6,6 +6,7 @@
 #include <exception>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "Http.h"
 #include "Uri.h"
@@ -20,10 +21,10 @@ HttpRequest::MethodMap initMethodMap() {
 }
 const HttpRequest::MethodMap HttpRequest::method_map = initMethodMap();
 
-// TODO: check request size
 // NOLINTNEXTLINE
-HttpRequest::HttpRequest(std::string const& raw)
+HttpRequest::HttpRequest(std::vector<char> const& data)
     : status_(S_NONE), time_(std::time(nullptr)), method_(Http::UNKNOWN), uri_(NULL) {
+  std::string const raw(data.begin(), data.end());
   enum req_parse_state state = S_REQ_METHOD;
   std::string header_name;
   std::string::const_iterator last_token;
@@ -162,10 +163,12 @@ HttpRequest::HttpRequest(std::string const& raw)
           if (h_it != headers_.end() && !h_it->second.empty()) {
             std::size_t start = std::distance(raw.begin(), it + 2);
             std::size_t end = std::distance(it + 2, raw.end());
-            body_ = raw.substr(start, end);
+            std::string body = raw.substr(start, end);
+            body_.assign(body.begin(), body.end());
             if (status_ != S_CONTINUE) {
               status_ = S_OK;
             }
+            it += 2;
           } else {
             status_ = S_BAD_REQUEST;
           }
@@ -182,34 +185,43 @@ HttpRequest::HttpRequest(std::string const& raw)
 
 // TODO
 // if host -> bad request
-bool HttpRequest::addChunk(std::string const& chunk) {
-  (void)chunk;
-  if (status_ == S_CONTINUE) {
-    // enum chunk_parse_state state = S_CHK_IDENTIFY;
-    // for (std::string::const_iterator it = chunk.begin(); it != chunk.end();) {
-    //   switch (state) {
-    //     case S_CHK_IDENTIFY: {
-    //       // chunk: HEX[;*[=*]]CRLF
-    //       // last: 0[;*[=*]]CRLF
-    //       // trailer: field-name ":" OWS field-value OWS CRLF
-    //     }
-    //     case S_CHK_SIZE: {
-    //     }
-    //     case S_CHK_EXT: {
-    //     }
-    //     case S_CHK_DATA: {
-    //     }
-    //     case S_CHK_LAST: {
-    //     }
-    //     case S_CHK_TRAILER: {
-    //     }
-    //     case S_CHK_CRLF: {
-    //     }
-    //   }
-    // }
-    return true;
+// handle chunk AND content-length
+// 411 Length Required
+// 415 Unsupported Media Type
+// TODO: check request size
+bool HttpRequest::addChunk(std::vector<char> const& chunk) {
+  body_.pop_back();
+  body_.insert(body_.end(), chunk.begin(), chunk.end());
+  if (*(chunk.end() - 5) == CR && *(chunk.end() - 4) == LF && *(chunk.end() - 3) == CR && *(chunk.end() - 2) == LF) {
+    status_ = S_OK;
   }
-  return false;
+  return true;
+  // if (status_ == S_CONTINUE) {
+  //   // enum chunk_parse_state state = S_CHK_IDENTIFY;
+  //   // for (std::string::const_iterator it = chunk.begin(); it != chunk.end();) {
+  //   //   switch (state) {
+  //   //     case S_CHK_IDENTIFY: {
+  //   //       // chunk: HEX[;*[=*]]CRLF
+  //   //       // last: 0[;*[=*]]CRLF
+  //   //       // trailer: field-name ":" OWS field-value OWS CRLF
+  //   //     }
+  //   //     case S_CHK_SIZE: {
+  //   //     }
+  //   //     case S_CHK_EXT: {
+  //   //     }
+  //   //     case S_CHK_DATA: {
+  //   //     }
+  //   //     case S_CHK_LAST: {
+  //   //     }
+  //   //     case S_CHK_TRAILER: {
+  //   //     }
+  //   //     case S_CHK_CRLF: {
+  //   //     }
+  //   //   }
+  //   // }
+  //   return true;
+  // }
+  // return false;
 }
 
 HttpRequest::~HttpRequest() {
@@ -228,7 +240,7 @@ Uri const* HttpRequest::getUri() const { return uri_; }
 
 std::map<std::string, std::string> const& HttpRequest::getHeaders() const { return headers_; }
 
-std::string const& HttpRequest::getBody() const { return body_; }
+std::vector<char> const& HttpRequest::getBody() const { return body_; }
 
 std::string HttpRequest::getHost() const {
   std::map<std::string, std::string>::const_iterator h_it = headers_.find("host");
@@ -243,3 +255,5 @@ std::string HttpRequest::getHost() const {
   }
   return "";
 }
+
+bool HttpRequest::isFileUpload() const { return true; }

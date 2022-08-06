@@ -3,7 +3,9 @@
 #include <sys/signal.h>
 
 #include <__nullptr>
+#include <fstream>
 #include <iostream>
+#include <ostream>
 #include <vector>
 
 #include "CGI.h"
@@ -248,7 +250,24 @@ void Server::postHandler(Client* client, ServerConfig const* server_config) {
           return;
         }
       } catch (Route::NotFoundException) {
-        response = new HttpResponse(HttpResponseClientError::_404, server_config);
+        if (req->isFileUpload()) {
+          File* target = route->getUploadStore();
+          if (target != nullptr && target->exist() && target->isWritable() && target->getType() == File::DI) {
+            // TODO: check if content emtpy -> 204
+            // TODO: check if  wrong content -> 206
+            File out(target->getPath() + "/test.pdf");
+            if (out.exist()) {
+              response = new HttpResponse(HttpResponseClientError::_409, server_config);
+            } else {
+              out.getOStream()->write(&(req->getBody()[0]), req->getBody().size() - 1);  // NOLINT
+              response = new HttpResponse(HttpResponseSuccess::_201, server_config);
+            }
+          } else {
+            response = new HttpResponse(HttpResponseClientError::_403, server_config);
+          }
+        } else {
+          response = new HttpResponse(HttpResponseClientError::_404, server_config);
+        }
       } catch (Route::ForbiddenException) {
         response = new HttpResponse(HttpResponseClientError::_403, server_config);
       }

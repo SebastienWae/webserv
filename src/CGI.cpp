@@ -5,6 +5,7 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <vector>
 
 #include "File.h"
 
@@ -100,8 +101,8 @@ void CGI::execute() {
     // TODO: handle large content
     close(pipe_fd[0]);
 
-    std::string content = client_->getRequest()->getBody();
-    write(pipe_fd[1], content.c_str(), content.size());
+    std::vector<char> content = client_->getRequest()->getBody();
+    write(pipe_fd[1], &(content[0]), content.size());
 
     close(pipe_fd[1]);
 

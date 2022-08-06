@@ -7,6 +7,7 @@
 
 #include <__nullptr>
 #include <cstring>
+#include <vector>
 
 #include "HttpRequest.h"
 #include "HttpResponse.h"
@@ -37,12 +38,12 @@ int Client::getSocket() const { return socket_; }
 void Client::read(unsigned int bytes) throw(ReadException) {
   INFO("Reading data");
 
-  char* data = new char[bytes + 1];
-  bzero(data, bytes + 1);
-  std::size_t len = recv(socket_, data, bytes, 0);
+  std::vector<char> data(bytes + 1);
+  data.back() = 0;
+
+  std::size_t len = recv(socket_, reinterpret_cast<char*>(&data[0]), bytes, 0);
 
   if (len <= 0) {
-    delete[] data;
     throw ReadException();
   }
 
@@ -55,8 +56,6 @@ void Client::read(unsigned int bytes) throw(ReadException) {
   if (request_->getStatus() != HttpRequest::S_CONTINUE) {
     reading_ = false;
   }
-
-  delete[] data;
 }
 
 void Client::send(unsigned int bytes) throw(WriteException) {

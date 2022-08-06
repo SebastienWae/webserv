@@ -238,7 +238,7 @@ std::ifstream* File::getIStream() {
   if (stat() || stat_.st_ctimespec.tv_sec != last_time.tv_sec || stat_.st_ctimespec.tv_nsec != last_time.tv_nsec) {
     if (isReadable() && getType() == REG) {
       if (input_stream_ == NULL) {
-        input_stream_ = new std::ifstream(path_);
+        input_stream_ = new std::ifstream(path_, std::ios::binary);
       }
       return input_stream_;
     }
@@ -251,19 +251,10 @@ std::ifstream* File::getIStream() {
 }
 
 std::ofstream* File::getOStream() {
-  if (stat()) {
-    if (isWritable() && getType() == REG) {
-      if (output_stream_ == NULL) {
-        output_stream_ = new std::ofstream(path_);
-      }
-      return output_stream_;
-    }
-  } else if (output_stream_ != NULL) {
-    output_stream_->close();
-    delete output_stream_;
-    output_stream_ = NULL;
+  if (output_stream_ == NULL) {
+    output_stream_ = new std::ofstream(path_, std::ios::binary);
   }
-  return NULL;
+  return output_stream_;
 }
 
 std::string File::getListing(std::string const& url) {
