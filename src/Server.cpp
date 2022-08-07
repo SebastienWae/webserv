@@ -1,6 +1,8 @@
 #include "Server.h"
 
 #include <_types/_uint8_t.h>
+#include <dirent.h>
+#include <stdio.h>
 #include <sys/signal.h>
 
 #include <__nullptr>
@@ -283,8 +285,50 @@ void Server::postHandler(Client* client, ServerConfig const* server_config) {
 
 // TODO
 void Server::deleteHandler(Client* client, ServerConfig const* server_config) {
-  HttpResponse* response = new HttpResponse(HttpResponseSuccess::_200, server_config);
+  HttpRequest const* req = client->getRequest();
+  Uri const* uri = req->getUri();
+  Route const* route = server_config->matchRoute(uri);
+
+  HttpResponse* response;
+  if (route->isAllowedMethod(Http::DELETE)) {
+    if (route->isRedirection()) {
+      response = new HttpResponse(route->getRedirection().first, route->getRedirection().second->getRaw());
+    } else {
+      try {
+        File* target = route->matchCGI(uri);
+        if (target == nullptr) {
+          target = route->matchFile(uri);
+        }
+        if (target->isWritable()) {
+          if (target->getType() == File::DI) {
+            if (remove(target->getPath().c_str()) != 0) {
+              // directory not empty
+              response = new HttpResponse(HttpResponseClientError::_403, server_config);
+            } else {
+              response = new HttpResponse(HttpResponseSuccess::_200, "Directory deleted.", "text/html", server_config);
+            }
+          } else {
+            if (remove(target->getPath().c_str()) != 0) {
+              // not supposed to happen
+              response = new HttpResponse(HttpResponseServerError::_500, server_config);
+            } else {
+              response = new HttpResponse(HttpResponseSuccess::_200, "File deleted.", "text/html", server_config);
+            }
+          }
+        } else {
+          throw Route::ForbiddenException();
+        }
+      } catch (Route::NotFoundException) {
+        response = new HttpResponse(HttpResponseClientError::_404, server_config);
+      } catch (Route::ForbiddenException) {
+        response = new HttpResponse(HttpResponseClientError::_403, server_config);
+      }
+    }
+  } else {
+    response = new HttpResponse(HttpResponseClientError::_405, server_config);
+  }
   client->setReponse(response);
+  updateEvents(client->getSocket(), EVFILT_WRITE, EV_ADD | EV_ENABLE);
 }
 
 void Server::timeoutClient(Client* client) {
