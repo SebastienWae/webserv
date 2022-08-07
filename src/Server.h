@@ -49,7 +49,6 @@ private:
   void processRequest(Client* client);
 
   void getHandler(Client* client, ServerConfig const* server_config);
-  void headHandler(Client* client, ServerConfig const* server_config);
   void postHandler(Client* client, ServerConfig const* server_config);
   void deleteHandler(Client* client, ServerConfig const* server_config);
 

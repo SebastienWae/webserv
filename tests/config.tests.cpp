@@ -69,7 +69,6 @@ TEST_CASE("valid config") {
       CHECK_FALSE(r->isRedirection());
       CHECK(r->isAllowedMethod(Http::GET));
       CHECK_FALSE(r->isAllowedMethod(Http::POST));
-      CHECK_FALSE(r->isAllowedMethod(Http::HEAD));
       CHECK_FALSE(r->isAllowedMethod(Http::DELETE));
       File* upload_store = r->getUploadStore();
       CHECK(upload_store == nullptr);
@@ -179,7 +178,6 @@ TEST_CASE("valid config") {
       CHECK(r->getLocation() == "/relative_redir");
       CHECK_FALSE(r->isAllowedMethod(Http::GET));
       CHECK_FALSE(r->isAllowedMethod(Http::POST));
-      CHECK_FALSE(r->isAllowedMethod(Http::HEAD));
       CHECK_FALSE(r->isAllowedMethod(Http::DELETE));
       File* root = r->getRoot();
       CHECK(root != nullptr);
@@ -203,7 +201,6 @@ TEST_CASE("valid config") {
       CHECK(r->getLocation() == "/absolute_redir");
       CHECK_FALSE(r->isAllowedMethod(Http::GET));
       CHECK_FALSE(r->isAllowedMethod(Http::POST));
-      CHECK_FALSE(r->isAllowedMethod(Http::HEAD));
       CHECK_FALSE(r->isAllowedMethod(Http::DELETE));
       File* root = r->getRoot();
       CHECK(root != nullptr);
@@ -228,7 +225,6 @@ TEST_CASE("valid config") {
       CHECK(r->getLocation() == "/subdir");
       CHECK(r->isAllowedMethod(Http::GET));
       CHECK_FALSE(r->isAllowedMethod(Http::POST));
-      CHECK_FALSE(r->isAllowedMethod(Http::HEAD));
       CHECK(r->isAllowedMethod(Http::DELETE));
       CHECK_FALSE(r->isRedirection());
       File* file = nullptr;
@@ -265,7 +261,6 @@ TEST_CASE("valid config") {
       CHECK(r->getLocation() == "/multi");
       CHECK(r->isAllowedMethod(Http::GET));
       CHECK(r->isAllowedMethod(Http::POST));
-      CHECK_FALSE(r->isAllowedMethod(Http::HEAD));
       CHECK(r->isAllowedMethod(Http::DELETE));
       CHECK_FALSE(r->isRedirection());
       File* file = nullptr;
@@ -288,7 +283,7 @@ TEST_CASE("valid config") {
   // test [test.com]
   {
     CAPTURE("[test.com]");
-    std::string s = "HEAD / HTTP/1.1\r\nHost: test.com\r\n\r\n";
+    std::string s = "GET / HTTP/1.1\r\nHost: test.com\r\n\r\n";
     std::vector<uint8_t> r(s.begin(), s.end());
     HttpRequest req(r);
     ServerConfig const* sc = config.matchServerConfig(&req);

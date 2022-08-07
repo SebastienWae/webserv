@@ -118,7 +118,6 @@ void CGI::execute() {
       close(pipe_fd[0]);
       std::exit(EXIT_FAILURE);
     } else {
-      // TODO: handle large content
       close(pipe_fd[0]);
 
       std::vector<uint8_t> content = client_->getRequest()->getBody();

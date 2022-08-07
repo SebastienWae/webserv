@@ -45,6 +45,7 @@ public:
 
   File* matchFile(Uri const* uri) const;
   File* matchCGI(Uri const* uri) const;
+  File* matchFileUpload(Uri const* uri) const;
 
 private:
   std::string const location_;

@@ -20,7 +20,6 @@
 HttpRequest::MethodMap initMethodMap() {
   HttpRequest::MethodMap map;
   map.insert(std::pair<std::string, enum Http::method>("GET", Http::GET));
-  map.insert(std::pair<std::string, enum Http::method>("HEAD", Http::HEAD));
   map.insert(std::pair<std::string, enum Http::method>("POST", Http::POST));
   map.insert(std::pair<std::string, enum Http::method>("DELETE", Http::DELETE));
   return map;
@@ -218,8 +217,6 @@ HttpRequest::HttpRequest(std::vector<uint8_t> const& data, Config const& config)
   }
 }
 
-// TODO: 415 Unsupported Media Type
-
 void HttpRequest::addChunk(std::vector<uint8_t> const& chunk, std::size_t max_body_size) {
   if (is_chunked_) {
     chunks_buff_.insert(chunks_buff_.end(), chunk.begin(), chunk.end());
@@ -303,5 +300,4 @@ std::string HttpRequest::getHost() const {
   return "";
 }
 
-// TODO
-bool HttpRequest::isFileUpload() const { return true; }
+bool HttpRequest::isFileUpload() const { return content_length_ > 0 || is_chunked_; }

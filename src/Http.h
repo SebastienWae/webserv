@@ -8,7 +8,7 @@
 #define CRLF "\r\n"
 #define HTTP_VERSION "HTTP/1.1"
 namespace Http {
-  enum method { UNKNOWN, GET, HEAD, POST, DELETE };
+  enum method { UNKNOWN, GET, POST, DELETE };
 }
 
 #endif

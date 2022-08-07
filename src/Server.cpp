@@ -121,9 +121,6 @@ void Server::processRequest(Client* client) {
         case Http::GET:
           getHandler(client, server_config);
           return;
-        case Http::HEAD:
-          headHandler(client, server_config);
-          return;
         case Http::POST:
           postHandler(client, server_config);
           return;
@@ -218,12 +215,6 @@ void Server::getHandler(Client* client, ServerConfig const* server_config) {
   client->setReponse(response);
 }
 
-// TODO
-void Server::headHandler(Client* client, ServerConfig const* server_config) {
-  HttpResponse* response = new HttpResponse(HttpResponseSuccess::_200, server_config);
-  client->setReponse(response);
-}
-
 void Server::postHandler(Client* client, ServerConfig const* server_config) {
   HttpRequest const* req = client->getRequest();
   Uri const* uri = req->getUri();
@@ -237,23 +228,30 @@ void Server::postHandler(Client* client, ServerConfig const* server_config) {
       try {
         File* target = route->matchCGI(uri);
         if (target == nullptr) {
-          target = route->matchFile(uri);
-          if (target->getType() == File::DI) {
-            if (route->isDirectoryListing()) {
-              response = new HttpResponse(HttpResponseSuccess::_200, target->getListing(uri->getDecodedPath()),
-                                          "text/html", server_config);
-            } else {
-              delete target;
-              target = route->getDirecoryPage();
-              if (target == nullptr || !target->exist() || !target->isReadable() || !(target->getType() == File::REG)) {
-                response = new HttpResponse(HttpResponseClientError::_403, server_config);
-              } else {
-                response
-                    = new HttpResponse(HttpResponseSuccess::_200, target->getContent(), "text/html", server_config);
-              }
-            }
+          std::map<std::string, std::string> headers = req->getHeaders();
+          std::map<std::string, std::string>::const_iterator content_type = headers.find("content-type");
+          if (content_type != headers.end() && (content_type->second.compare(0, 9, "multipart") == 0)) {
+            response = new HttpResponse(HttpResponseClientError::_415, server_config);
           } else {
-            response = new HttpResponse(HttpResponseSuccess::_200, target, server_config);
+            target = route->matchFile(uri);
+            if (target->getType() == File::DI) {
+              if (route->isDirectoryListing()) {
+                response = new HttpResponse(HttpResponseSuccess::_200, target->getListing(uri->getDecodedPath()),
+                                            "text/html", server_config);
+              } else {
+                delete target;
+                target = route->getDirecoryPage();
+                if (target == nullptr || !target->exist() || !target->isReadable()
+                    || !(target->getType() == File::REG)) {
+                  response = new HttpResponse(HttpResponseClientError::_403, server_config);
+                } else {
+                  response
+                      = new HttpResponse(HttpResponseSuccess::_200, target->getContent(), "text/html", server_config);
+                }
+              }
+            } else {
+              response = new HttpResponse(HttpResponseSuccess::_200, target, server_config);
+            }
           }
         } else {
           CGI script(client, server_config, target, "POST");
@@ -264,14 +262,15 @@ void Server::postHandler(Client* client, ServerConfig const* server_config) {
         if (req->isFileUpload()) {
           File* target = route->getUploadStore();
           if (target != nullptr && target->exist() && target->isWritable() && target->getType() == File::DI) {
-            File out(target->getPath() + "/test.pdf");
-            if (out.exist()) {
+            File* upload = route->matchFileUpload(uri);
+            if (upload->exist()) {
               response = new HttpResponse(HttpResponseClientError::_409, server_config);
             } else {
               std::vector<uint8_t> file = req->getBody();
-              out.getOStream()->write(reinterpret_cast<char*>(&file[0]), file.size());  // NOLINT
+              upload->getOStream()->write(reinterpret_cast<char*>(&file[0]), file.size());  // NOLINT
               response = new HttpResponse(HttpResponseSuccess::_201, server_config);
             }
+            delete upload;
           } else {
             response = new HttpResponse(HttpResponseClientError::_403, server_config);
           }

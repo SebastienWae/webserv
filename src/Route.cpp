@@ -75,8 +75,6 @@ void Route::parse(std::string const& line) {  // NOLINT
         Http::method method = Http::UNKNOWN;
         if (value.substr(0, pos) == "GET") {
           method = Http::GET;
-        } else if (value.substr(0, pos) == "HEAD") {
-          method = Http::HEAD;
         } else if (value.substr(0, pos) == "POST") {
           method = Http::POST;
         } else if (value.substr(0, pos) == "DELETE") {
@@ -198,6 +196,21 @@ File* Route::matchFile(Uri const* uri) const {
     delete file;
     throw ForbiddenException();
   }
+  return file;
+}
+
+File* Route::matchFileUpload(Uri const* uri) const {
+  std::string file_path;
+  std::string uri_path = uri->getDecodedPath();
+  std::string upload_path = this->upload_store_->getPath();
+  if (uri_path.size() > upload_path.size()) {
+    file_path = uri_path.substr(upload_path.size());
+  }
+  if (!file_path.empty()) {
+    file_path = "/" + file_path;
+  }
+  std::string absolute_path = root_->getPath() + file_path;
+  File* file = new File(absolute_path);
   return file;
 }
 
