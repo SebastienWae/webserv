@@ -42,7 +42,7 @@ std::vector<std::pair<std::string const, std::string const> > initResponseClient
   v.push_back(std::pair<std::string const, std::string>("400", "Bad Request"));
   v.push_back(std::pair<std::string const, std::string>("401", "Unauthorized"));
   v.push_back(std::pair<std::string const, std::string>("402", "Payment Required"));
-  v.push_back(std::pair<std::string const, std::string>("403", "Forbiden"));
+  v.push_back(std::pair<std::string const, std::string>("403", "Forbidden"));
   v.push_back(std::pair<std::string const, std::string>("404", "Not Found"));
   v.push_back(std::pair<std::string const, std::string>("405", "Method Not Allowed"));
   v.push_back(std::pair<std::string const, std::string>("406", "Not Acceptable"));
