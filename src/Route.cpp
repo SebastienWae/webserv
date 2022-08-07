@@ -202,14 +202,25 @@ File* Route::matchFile(Uri const* uri) const {
 File* Route::matchFileUpload(Uri const* uri) const {
   std::string file_path;
   std::string uri_path = uri->getDecodedPath();
-  std::string upload_path = this->upload_store_->getPath();
-  if (uri_path.size() > upload_path.size()) {
-    file_path = uri_path.substr(upload_path.size());
+  std::string route_path = this->location_;
+  if (uri_path.size() > route_path.size()) {
+    file_path = uri_path.substr(route_path.size());
   }
   if (!file_path.empty()) {
     file_path = "/" + file_path;
   }
-  std::string absolute_path = root_->getPath() + file_path;
+  std::string absolute_path = upload_store_->getPath() + file_path;
+  std::string dir_path = absolute_path.substr(0, absolute_path.find_last_of('/'));
+  File* dir = new File(dir_path);
+  if (!dir->exist()) {
+    delete dir;
+    throw NotFoundException();
+  }
+  if (!dir->isWritable()) {
+    delete dir;
+    throw ForbiddenException();
+  }
+  delete dir;
   File* file = new File(absolute_path);
   return file;
 }
