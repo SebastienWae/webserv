@@ -171,16 +171,17 @@ Uri::Uri(std::string const& uri) throw(UriParsingException) : type_(Uri::TYPE_NO
                 throw UriParsingException();
               }
               for (std::string::size_type i = 0; i < sepipadress.size(); i++) {
-                for (std::string::size_type j = 0; j < sepipadress[i].size(); j++) {
-                  if (sepipadress[i][0] > '2' || sepipadress[i][0] < '0') {
-                    throw UriParsingException();
-                  }
-                  if (sepipadress[i][0] == '2' && (sepipadress[i][1] > '5')) {
-                    throw UriParsingException();
-                  }
-                  if (sepipadress[i][0] == '2' && (sepipadress[i][1] == '5') && (sepipadress[i][2] > '5')) {
-                    throw UriParsingException();
-                  }
+                if (sepipadress[i].size() > 3) {
+                  throw UriParsingException();
+                }
+                if (sepipadress[i][0] > '2' || sepipadress[i][0] < '0') {
+                  throw UriParsingException();
+                }
+                if (sepipadress[i][0] == '2' && (sepipadress[i][1] > '5')) {
+                  throw UriParsingException();
+                }
+                if (sepipadress[i][0] == '2' && (sepipadress[i][1] == '5') && (sepipadress[i][2] > '5')) {
+                  throw UriParsingException();
                 }
               }
               if (*it == '/' || *it == ':' || *it == '?' || *it == '#') {
