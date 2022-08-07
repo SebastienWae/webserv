@@ -99,14 +99,38 @@ Uri::Uri(std::string const& uri) throw(UriParsingException) : type_(Uri::TYPE_NO
           }
           break;
         }
-        case STATE_HOSTNAME: {  // TODO: validate hostname
-          if (std::isalnum(*it) != 0 || *it == '.' || *it == '-' || *it == '!' || *it == '$' || *it == '&'
-              || *it == '\'' || *it == '(' || *it == ')' || *it == '*' || *it == '+' || *it == ',' || *it == ';'
-              || *it == '=') {
+        case STATE_HOSTNAME: {
+          if (std::isalnum(*it) != 0 || *it == '.' || *it == '-') {
             ++it;
             if (it == uri.end() || *it == '/' || *it == ':' || *it == '?' || *it == '#') {
               host_ = uri.substr(std::distance(uri.begin(), last_token), std::distance(last_token, it));
               std::transform(host_.begin(), host_.end(), host_.begin(), ::tolower);
+              if (host_.size() > LENGTHDNS) {
+                throw UriParsingException();
+              }
+              std::vector<std::string> sephostname;
+              std::string::size_type start = 0;
+              std::string::size_type end = 0;
+              for (size_t i = 0; i < host_.size(); i++) {
+                end = i;
+                if (host_.compare(i, strlen("."), ".") == 0) {
+                  sephostname.push_back(host_.substr(start, end - start));
+                  start = end + 1;
+                }
+              }
+              end++;
+              sephostname.push_back(host_.substr(start, end - start));
+              for (std::string::size_type i = 1; i != sephostname.size() - 1; i++) {
+                if (sephostname[i].size() > LENGTHPARTDOTS) {
+                  throw UriParsingException();
+                }
+              }
+              for (std::string::size_type i = 0; i != sephostname.size(); i++) {
+                if (std::isalnum(sephostname[i][0]) == 0
+                    || (std::isalnum(sephostname[i][sephostname[i].size() - 1]) == 0)) {
+                  throw UriParsingException();
+                }
+              }
               if (*it == '/' || *it == ':' || *it == '?' || *it == '#') {
                 if (*it == '/' && *(it + 1) != '/') {
                   state = STATE_PATH;
@@ -126,11 +150,39 @@ Uri::Uri(std::string const& uri) throw(UriParsingException) : type_(Uri::TYPE_NO
           }
           break;
         }
-        case STATE_IPV4ADDRESS: {  // TODO: validate IP
+        case STATE_IPV4ADDRESS: {
           if (std::isdigit(*it) != 0 || *it == '.') {
             ++it;
             if (it == uri.end() || *it == '/' || *it == ':' || *it == '?' || *it == '#') {
               host_ = uri.substr(std::distance(uri.begin(), last_token), std::distance(last_token, it));
+              std::vector<std::string> sepipadress;
+              std::string::size_type start = 0;
+              std::string::size_type end = 0;
+              for (std::string::size_type i = 0; i < host_.size(); i++) {
+                end = i;
+                if (host_.compare(i, strlen("."), ".") == 0) {
+                  sepipadress.push_back(host_.substr(start, end - start));
+                  start = end + 1;
+                }
+              }
+              end++;
+              sepipadress.push_back(host_.substr(start, end - start));
+              if (sepipadress.size() != 4) {
+                throw UriParsingException();
+              }
+              for (std::string::size_type i = 0; i < sepipadress.size(); i++) {
+                for (std::string::size_type j = 0; j < sepipadress[i].size(); j++) {
+                  if (sepipadress[i][0] > '2' || sepipadress[i][0] < '0') {
+                    throw UriParsingException();
+                  }
+                  if (sepipadress[i][0] == '2' && (sepipadress[i][1] > '5')) {
+                    throw UriParsingException();
+                  }
+                  if (sepipadress[i][0] == '2' && (sepipadress[i][1] == '5') && (sepipadress[i][2] > '5')) {
+                    throw UriParsingException();
+                  }
+                }
+              }
               if (*it == '/' || *it == ':' || *it == '?' || *it == '#') {
                 if (*it == '/' && *(it + 1) != '/') {
                   state = STATE_PATH;
