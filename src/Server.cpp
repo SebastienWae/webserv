@@ -235,14 +235,16 @@ void Server::deleteHandler(Client* client, ServerConfig const* server_config) {
 void Server::timeoutClient(Client* client) {
   INFO("Timeout client");
   if (client->isReading()) {
+    HttpResponse* timeout_response;
     if (client->getRequest() != NULL) {
       ServerConfig const* server_config = config_.matchServerConfig(client->getRequest());
-      HttpResponse timeout_response(HttpResponseClientError::_408, server_config);
-
-      client->setResponseData(timeout_response.getRaw());
-      client->setRead();
+      timeout_response = new HttpResponse(HttpResponseClientError::_408, server_config);
+    } else {
+      timeout_response = new HttpResponse(HttpResponseClientError::_408, NULL);
     }
-    // TODO: handle no request
+    client->setResponseData(timeout_response->getRaw());
+    client->setRead();
+    delete timeout_response;
   }
   removeClient(client);
 }
