@@ -262,15 +262,21 @@ void Server::postHandler(Client* client, ServerConfig const* server_config) {
         if (req->isFileUpload()) {
           File* target = route->getUploadStore();
           if (target != nullptr && target->exist() && target->isWritable() && target->getType() == File::DI) {
-            File* upload = route->matchFileUpload(uri);
-            if (upload->exist()) {
-              response = new HttpResponse(HttpResponseClientError::_409, server_config);
-            } else {
-              std::vector<uint8_t> file = req->getBody();
-              upload->getOStream()->write(reinterpret_cast<char*>(&file[0]), file.size());  // NOLINT
-              response = new HttpResponse(HttpResponseSuccess::_201, server_config);
+            try {
+              File* upload = route->matchFileUpload(uri);
+              if (upload->exist()) {
+                response = new HttpResponse(HttpResponseClientError::_409, server_config);
+              } else {
+                std::vector<uint8_t> file = req->getBody();
+                upload->getOStream()->write(reinterpret_cast<char*>(&file[0]), file.size());  // NOLINT
+                response = new HttpResponse(HttpResponseSuccess::_201, server_config);
+              }
+              delete upload;
+            } catch (Route::NotFoundException) {
+              response = new HttpResponse(HttpResponseClientError::_404, server_config);
+            } catch (Route::ForbiddenException) {
+              response = new HttpResponse(HttpResponseClientError::_403, server_config);
             }
-            delete upload;
           } else {
             response = new HttpResponse(HttpResponseClientError::_403, server_config);
           }
