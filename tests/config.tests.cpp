@@ -1,8 +1,11 @@
 #include "../src/Config.h"
 
+#include <sys/types.h>
+
 #include <__nullptr>
 #include <cstddef>
 #include <limits>
+#include <vector>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
@@ -20,7 +23,9 @@ TEST_CASE("valid config") {
   // test [254.0.0.155:42422]
   {
     CAPTURE("[254.0.0.155:42422]");
-    HttpRequest req("GET / HTTP/1.1\r\nHost: 254.0.0.155:42422\r\n\r\n");
+    std::string s = "GET / HTTP/1.1\r\nHost: 254.0.0.155:42422\r\n\r\n";
+    std::vector<uint8_t> r(s.begin(), s.end());
+    HttpRequest req(r);
     ServerConfig const* sc = config.matchServerConfig(&req);
     CHECK(sc != nullptr);
     CHECK(sc->getHostname() == "254.0.0.155");
@@ -283,7 +288,9 @@ TEST_CASE("valid config") {
   // test [test.com]
   {
     CAPTURE("[test.com]");
-    HttpRequest req("HEAD / HTTP/1.1\r\nHost: test.com\r\n\r\n");
+    std::string s = "HEAD / HTTP/1.1\r\nHost: test.com\r\n\r\n";
+    std::vector<uint8_t> r(s.begin(), s.end());
+    HttpRequest req(r);
     ServerConfig const* sc = config.matchServerConfig(&req);
     CHECK(sc != nullptr);
     CHECK(sc->getHostname() == "test.com");
@@ -297,7 +304,9 @@ TEST_CASE("valid config") {
   // test [:6868]
   {
     CAPTURE("[:6868]");
-    HttpRequest req("POST / HTTP/1.1\r\nHost: localhost:6868\r\n\r\n");
+    std::string s = "POST / HTTP/1.1\r\nHost: localhost:6868\r\n\r\n";
+    std::vector<uint8_t> r(s.begin(), s.end());
+    HttpRequest req(r);
     ServerConfig const* sc = config.matchServerConfig(&req);
     CHECK(sc != nullptr);
     CHECK(sc->getHostname() == "localhost");
@@ -311,7 +320,9 @@ TEST_CASE("valid config") {
   // test []
   {
     CAPTURE("[]");
-    HttpRequest req("GET / HTTP/1.1\r\nHost: localhost:80\r\n\r\n");
+    std::string s = "GET / HTTP/1.1\r\nHost: localhost:80\r\n\r\n";
+    std::vector<uint8_t> r(s.begin(), s.end());
+    HttpRequest req(r);
     ServerConfig const* sc = config.matchServerConfig(&req);
     CHECK(sc != nullptr);
     CHECK(sc->getHostname() == "localhost");
@@ -325,7 +336,9 @@ TEST_CASE("valid config") {
   // test [test.com:40]
   {
     CAPTURE("[test.com:40]");
-    HttpRequest req("DELETE / HTTP/1.1\r\nHost: test.com:40\r\n\r\n");
+    std::string s = "DELETE / HTTP/1.1\r\nHost: test.com:40\r\n\r\n";
+    std::vector<uint8_t> r(s.begin(), s.end());
+    HttpRequest req(r);
     ServerConfig const* sc = config.matchServerConfig(&req);
     CHECK(sc != nullptr);
     CHECK(sc->getHostname() == "test.com");
@@ -339,7 +352,9 @@ TEST_CASE("valid config") {
   // test google.com
   {
     CAPTURE("http://google.com");
-    HttpRequest req("DELETE / HTTP/1.1\r\nHost: google.com\r\n\r\n");
+    std::string s = "DELETE / HTTP/1.1\r\nHost: google.com\r\n\r\n";
+    std::vector<uint8_t> r(s.begin(), s.end());
+    HttpRequest req(r);
     ServerConfig const* sc = config.matchServerConfig(&req);
     CHECK(sc != nullptr);
     CHECK(sc->getHostname() == "254.0.0.155");
