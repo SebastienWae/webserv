@@ -119,8 +119,7 @@ void Config::parse(std::ifstream* file) {  // NOLINT
   }
 }
 
-ServerConfig const* Config::matchServerConfig(HttpRequest const* request) const {
-  std::string host = request->getHost();
+ServerConfig const* Config::matchServerConfig(std::string const& host) const {
   std::string hostname;
   std::string port;
   std::string::size_type sep = host.find(':');

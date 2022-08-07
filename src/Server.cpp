@@ -75,10 +75,11 @@ void Server::start() {  // NOLINT
           } else if (std::time(nullptr) - client->getTime() >= TIMEOUT) {
             timeoutClient(client);
           } else if (events_[i].filter == EVFILT_READ) {
-            client->read(events_[i].data);
+            client->read(events_[i].data, config_);
             if (!client->isReading()) {
               processRequest(client);
               updateEvents(client->getSocket(), EVFILT_READ, EV_DELETE);
+              updateEvents(client->getSocket(), EVFILT_WRITE, EV_ADD | EV_ENABLE);
             }
           } else if (events_[i].filter == EVFILT_WRITE) {
             if (!client->hasReplied()) {
@@ -102,7 +103,7 @@ void Server::start() {  // NOLINT
 
 void Server::processRequest(Client* client) {
   HttpResponse* response;
-  ServerConfig const* server_config = config_.matchServerConfig(client->getRequest());
+  ServerConfig const* server_config = config_.matchServerConfig(client->getRequest()->getHost());
 
   switch (client->getRequest()->getStatus()) {
     case HttpRequest::S_NONE: {
@@ -131,11 +132,6 @@ void Server::processRequest(Client* client) {
           return;
       }
     }
-    case HttpRequest::S_CONTINUE: {  // this should not be possible
-      response = new HttpResponse(HttpResponseServerError::_500, server_config);
-      client->setReponse(response);
-      return;
-    }
     case HttpRequest::S_BAD_REQUEST: {
       response = new HttpResponse(HttpResponseClientError::_400, server_config);
       client->setReponse(response);
@@ -153,6 +149,21 @@ void Server::processRequest(Client* client) {
     }
     case HttpRequest::S_EXPECTATION_FAILED: {
       response = new HttpResponse(HttpResponseClientError::_417, server_config);
+      client->setReponse(response);
+      return;
+    }
+    case HttpRequest::S_LENGTH_REQUIRED: {
+      response = new HttpResponse(HttpResponseClientError::_411, server_config);
+      client->setReponse(response);
+      return;
+    }
+    case HttpRequest::S_REQUEST_ENTITY_TOO_LARGE: {
+      response = new HttpResponse(HttpResponseClientError::_413, server_config);
+      client->setReponse(response);
+      return;
+    }
+    case HttpRequest::S_CONTINUE: {
+      response = new HttpResponse(HttpResponseServerError::_500, server_config);
       client->setReponse(response);
       return;
     }
@@ -193,7 +204,6 @@ void Server::getHandler(Client* client, ServerConfig const* server_config) {
         } else {
           CGI script(client, server_config, target, "GET");
           script.execute();
-          updateEvents(client->getSocket(), EVFILT_WRITE, EV_ADD | EV_ENABLE);
           return;
         }
       } catch (Route::NotFoundException) {
@@ -206,7 +216,6 @@ void Server::getHandler(Client* client, ServerConfig const* server_config) {
     response = new HttpResponse(HttpResponseClientError::_405, server_config);
   }
   client->setReponse(response);
-  updateEvents(client->getSocket(), EVFILT_WRITE, EV_ADD | EV_ENABLE);
 }
 
 // TODO
@@ -249,15 +258,12 @@ void Server::postHandler(Client* client, ServerConfig const* server_config) {
         } else {
           CGI script(client, server_config, target, "POST");
           script.execute();
-          updateEvents(client->getSocket(), EVFILT_WRITE, EV_ADD | EV_ENABLE);
           return;
         }
       } catch (Route::NotFoundException) {
         if (req->isFileUpload()) {
           File* target = route->getUploadStore();
           if (target != nullptr && target->exist() && target->isWritable() && target->getType() == File::DI) {
-            // TODO: check if content emtpy -> 204
-            // TODO: check if  wrong content -> 206
             File out(target->getPath() + "/test.pdf");
             if (out.exist()) {
               response = new HttpResponse(HttpResponseClientError::_409, server_config);
@@ -280,7 +286,6 @@ void Server::postHandler(Client* client, ServerConfig const* server_config) {
     response = new HttpResponse(HttpResponseClientError::_405, server_config);
   }
   client->setReponse(response);
-  updateEvents(client->getSocket(), EVFILT_WRITE, EV_ADD | EV_ENABLE);
 }
 
 void Server::deleteHandler(Client* client, ServerConfig const* server_config) {
@@ -333,7 +338,7 @@ void Server::timeoutClient(Client* client) {
   if (client->isReading()) {
     HttpResponse* timeout_response;
     if (client->getRequest() != NULL) {
-      ServerConfig const* server_config = config_.matchServerConfig(client->getRequest());
+      ServerConfig const* server_config = config_.matchServerConfig(client->getRequest()->getHost());
       timeout_response = new HttpResponse(HttpResponseClientError::_408, server_config);
     } else {
       timeout_response = new HttpResponse(HttpResponseClientError::_408, nullptr);

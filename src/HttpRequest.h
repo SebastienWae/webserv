@@ -3,6 +3,7 @@
 
 #include <_types/_uint8_t.h>
 
+#include <cstddef>
 #include <ctime>
 #include <exception>
 #include <map>
@@ -10,8 +11,12 @@
 #include <string>
 #include <vector>
 
+#include "Config.h"
 #include "Http.h"
 #include "Uri.h"
+
+#define GIGA 1000000000
+#define HEX_BASE 16
 
 class HttpRequest {
 public:
@@ -23,15 +28,16 @@ public:
     S_NOT_IMPLEMENTED,
     S_HTTP_VERSION_NOT_SUPPORTED,
     S_EXPECTATION_FAILED,
-    // S_PAYLOAD_TOO_LARGE  // TODO: ????
+    S_LENGTH_REQUIRED,
+    S_REQUEST_ENTITY_TOO_LARGE
   };
 
   typedef std::map<std::string, enum Http::method> MethodMap;
   static const MethodMap method_map;
 
-  HttpRequest(std::vector<uint8_t> const& data);
+  HttpRequest(std::vector<uint8_t> const& data, Config const& config);
 
-  bool addChunk(std::vector<uint8_t> const& chunk);
+  void addChunk(std::vector<uint8_t> const& chunk, std::size_t max_body_size);
 
   ~HttpRequest();
 
@@ -55,7 +61,6 @@ private:
     S_REQ_HEADER_VAL,
     S_REQ_CRLF,
   };
-  enum chunk_parse_state { S_CHK_IDENTIFY, S_CHK_SIZE, S_CHK_EXT, S_CHK_DATA, S_CHK_LAST, S_CHK_TRAILER, S_CHK_CRLF };
 
   enum status status_;
   std::time_t time_;
@@ -63,6 +68,11 @@ private:
   Uri* uri_;
   std::map<std::string, std::string> headers_;
   std::vector<uint8_t> body_;
+  std::vector<uint8_t> chunks_buff_;
+  std::size_t content_length_;
+  bool is_chunked_;
+
+  void parseChunks(std::size_t max_body_size);
 };
 
 #endif

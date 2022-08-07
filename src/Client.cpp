@@ -12,7 +12,9 @@
 
 #include "HttpRequest.h"
 #include "HttpResponse.h"
+#include "HttpResponseStatus.h"
 #include "Log.h"
+#include "ServerConfig.h"
 
 Client::Client(int socket, struct in_addr sin_addr)
     : socket_(socket),
@@ -36,7 +38,7 @@ Client::~Client() {
 
 int Client::getSocket() const { return socket_; }
 
-void Client::read(unsigned int bytes) throw(ReadException) {
+void Client::read(unsigned int bytes, Config const& config) throw(ReadException) {
   INFO("Reading data");
 
   std::vector<uint8_t> data(bytes, 0);
@@ -48,9 +50,20 @@ void Client::read(unsigned int bytes) throw(ReadException) {
   }
 
   if (request_ != NULL) {
-    request_->addChunk(data);
+    ServerConfig const* sc = config.matchServerConfig(request_->getHost());
+    request_->addChunk(data, sc->getMaxBodySize());
   } else {
-    request_ = new HttpRequest(data);
+    request_ = new HttpRequest(data, config);
+    if (request_->getStatus() == HttpRequest::S_CONTINUE) {
+      ServerConfig const* sc = config.matchServerConfig(request_->getHost());
+      HttpResponse r(HttpResponseInfo::_100, sc);
+      std::string r_continue = r.getHeaders();
+      std::size_t len = ::send(socket_, r_continue.c_str(), r_continue.size(), 0);
+      if (len < 0) {
+        ERROR(std::strerror(errno));
+        throw WriteException();
+      }
+    }
   }
 
   if (request_->getStatus() != HttpRequest::S_CONTINUE) {

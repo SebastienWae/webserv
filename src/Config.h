@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 
-#include "HttpRequest.h"
 #include "ServerConfig.h"
 
 class Config {
@@ -29,7 +28,7 @@ public:
 
   std::set<std::string> getPorts() const;
 
-  ServerConfig const* matchServerConfig(HttpRequest const* request) const;
+  ServerConfig const* matchServerConfig(std::string const& host) const;
 
 private:
   enum parse_state { S_NONE, S_IN_SERVER };

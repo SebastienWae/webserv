@@ -3,14 +3,18 @@
 #include <_types/_uint8_t.h>
 
 #include <__nullptr>
+#include <algorithm>
 #include <cctype>
 #include <cstddef>
 #include <exception>
+#include <iterator>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "Config.h"
 #include "Http.h"
+#include "ServerConfig.h"
 #include "Uri.h"
 
 HttpRequest::MethodMap initMethodMap() {
@@ -24,8 +28,13 @@ HttpRequest::MethodMap initMethodMap() {
 const HttpRequest::MethodMap HttpRequest::method_map = initMethodMap();
 
 // NOLINTNEXTLINE
-HttpRequest::HttpRequest(std::vector<uint8_t> const& data)
-    : status_(S_NONE), time_(std::time(nullptr)), method_(Http::UNKNOWN), uri_(NULL) {
+HttpRequest::HttpRequest(std::vector<uint8_t> const& data, Config const& config)
+    : status_(S_NONE),
+      time_(std::time(nullptr)),
+      method_(Http::UNKNOWN),
+      uri_(NULL),
+      content_length_(0),
+      is_chunked_(false) {
   enum req_parse_state state = S_REQ_METHOD;
   std::string header_name;
   std::vector<uint8_t>::const_iterator last_token;
@@ -137,7 +146,7 @@ HttpRequest::HttpRequest(std::vector<uint8_t> const& data)
             headers_[header_name] = value;
             if (header_name == "expect") {
               std::transform(value.begin(), value.end(), value.begin(), ::tolower);
-              if (value == "100-continue") {
+              if (value == "100-continue" && method_ == Http::POST) {
                 status_ = S_CONTINUE;
               } else {
                 status_ = S_EXPECTATION_FAILED;
@@ -163,14 +172,41 @@ HttpRequest::HttpRequest(std::vector<uint8_t> const& data)
         if (*it == CR && *(it + 1) == LF) {
           std::map<std::string, std::string>::const_iterator h_it = headers_.find("host");
           if (h_it != headers_.end() && !h_it->second.empty()) {
-            body_.assign(it + 2, data.end());
+            h_it = headers_.find("transfer-encoding");
+            if (h_it != headers_.end() && !h_it->second.empty()) {
+              if (h_it->second == "chunked") {
+                is_chunked_ = true;
+              } else {
+                status_ = S_NOT_IMPLEMENTED;
+                break;
+              }
+            }
+
+            h_it = headers_.find("content-length");
+            if (h_it != headers_.end() && !h_it->second.empty()) {
+              content_length_ = std::atol(h_it->second.c_str());
+            } else if (method_ == Http::POST && !is_chunked_) {
+              status_ = S_LENGTH_REQUIRED;
+              break;
+            }
+
+            if (method_ == Http::POST) {
+              body_.assign(it + 2, data.end());
+              ServerConfig const* sc = config.matchServerConfig(getHost());
+              if (content_length_ > static_cast<long>(1 * GIGA) || content_length_ > sc->getMaxBodySize()) {
+                status_ = S_REQUEST_ENTITY_TOO_LARGE;
+              } else if (body_.size() > content_length_) {
+                status_ = S_BAD_REQUEST;
+              }
+            }
+
             if (status_ != S_CONTINUE) {
               status_ = S_OK;
             }
-            it += 2;
           } else {
             status_ = S_BAD_REQUEST;
           }
+          it += 2;
         } else if (it == data.end()) {
           status_ = S_BAD_REQUEST;
         } else {
@@ -182,44 +218,57 @@ HttpRequest::HttpRequest(std::vector<uint8_t> const& data)
   }
 }
 
-// TODO
-// if host -> bad request
-// handle chunk AND content-length
-// 411 Length Required
-// 415 Unsupported Media Type
-// TODO: check request size
-bool HttpRequest::addChunk(std::vector<uint8_t> const& chunk) {
-  body_.insert(body_.end(), chunk.begin(), chunk.end());
-  if (*(chunk.end() - 4) == CR && *(chunk.end() - 3) == LF && *(chunk.end() - 2) == CR && *(chunk.end() - 1) == LF) {
-    status_ = S_OK;
+// TODO: 415 Unsupported Media Type
+
+void HttpRequest::addChunk(std::vector<uint8_t> const& chunk, std::size_t max_body_size) {
+  if (is_chunked_) {
+    chunks_buff_.insert(chunks_buff_.end(), chunk.begin(), chunk.end());
+    parseChunks(max_body_size);
+  } else {
+    std::size_t total = body_.size() + chunk.size();
+    if (total > content_length_) {
+      status_ = S_BAD_REQUEST;
+    } else {
+      if (total == content_length_) {
+        status_ = S_OK;
+      }
+      body_.insert(body_.end(), chunk.begin(), chunk.end());
+    }
   }
-  return true;
-  // if (status_ == S_CONTINUE) {
-  //   // enum chunk_parse_state state = S_CHK_IDENTIFY;
-  //   // for (std::string::const_iterator it = chunk.begin(); it != chunk.end();) {
-  //   //   switch (state) {
-  //   //     case S_CHK_IDENTIFY: {
-  //   //       // chunk: HEX[;*[=*]]CRLF
-  //   //       // last: 0[;*[=*]]CRLF
-  //   //       // trailer: field-name ":" OWS field-value OWS CRLF
-  //   //     }
-  //   //     case S_CHK_SIZE: {
-  //   //     }
-  //   //     case S_CHK_EXT: {
-  //   //     }
-  //   //     case S_CHK_DATA: {
-  //   //     }
-  //   //     case S_CHK_LAST: {
-  //   //     }
-  //   //     case S_CHK_TRAILER: {
-  //   //     }
-  //   //     case S_CHK_CRLF: {
-  //   //     }
-  //   //   }
-  //   // }
-  //   return true;
-  // }
-  // return false;
+}
+
+void HttpRequest::parseChunks(std::size_t max_body_size) {
+  std::vector<uint8_t>::iterator sep = std::find(chunks_buff_.begin(), chunks_buff_.end(), CR);
+  if (sep == chunks_buff_.end() || sep[1] != LF) {
+    return;
+  }
+
+  std::string hex(chunks_buff_.begin(), sep);
+  long size = strtol(hex.c_str(), nullptr, HEX_BASE);
+
+  std::size_t total = body_.size() + chunks_buff_.size();
+  if (total > static_cast<long>(1 * GIGA) || total > max_body_size) {
+    status_ = S_REQUEST_ENTITY_TOO_LARGE;
+    return;
+  }
+
+  std::vector<uint8_t>::const_iterator begin = sep + 2;
+  std::vector<uint8_t>::const_iterator end = chunks_buff_.end();
+  for (std::vector<uint8_t>::const_iterator it = begin; it != end; ++it) {
+    if (*it == CR && it[1] == LF) {
+      long len = std::distance(begin, it);
+      if (size == 0 && len == 0) {
+        status_ = S_OK;
+        break;
+      }
+      if (size == len) {
+        body_.insert(body_.end(), begin, it);
+        chunks_buff_.erase(chunks_buff_.begin(), it + 2);
+        parseChunks(max_body_size);
+        break;
+      }
+    }
+  }
 }
 
 HttpRequest::~HttpRequest() {

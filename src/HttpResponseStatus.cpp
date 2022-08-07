@@ -50,7 +50,7 @@ std::vector<std::pair<std::string const, std::string const> > initResponseClient
   v.push_back(std::pair<std::string const, std::string>("408", "Request Timeout"));
   v.push_back(std::pair<std::string const, std::string>("409", "Conflict"));
   v.push_back(std::pair<std::string const, std::string>("410", "Gone"));
-  v.push_back(std::pair<std::string const, std::string>("411", "Lenght Required"));
+  v.push_back(std::pair<std::string const, std::string>("411", "Length Required"));
   v.push_back(std::pair<std::string const, std::string>("412", "Precondition Failed"));
   v.push_back(std::pair<std::string const, std::string>("413", "Request Entity Too Large"));
   v.push_back(std::pair<std::string const, std::string>("414", "Request-URI Too Long"));
