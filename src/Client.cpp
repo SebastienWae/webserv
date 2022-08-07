@@ -7,6 +7,7 @@
 #include <sys/wait.h>
 
 #include <__nullptr>
+#include <cstddef>
 #include <cstring>
 #include <vector>
 
@@ -85,7 +86,11 @@ void Client::send(unsigned int bytes) throw(WriteException) {
     if (replying_) {
       try {
         std::vector<uint8_t> resp = response_->getContent(bytes);
-        ::send(socket_, reinterpret_cast<char*>(&resp[0]), bytes, 0);
+        std::size_t len = ::send(socket_, reinterpret_cast<char*>(&resp[0]), bytes, 0);
+        if (len < 0) {
+          ERROR(std::strerror(errno));
+          throw WriteException();
+        }
         return;
       } catch (HttpResponse::EndOfResponseException& e) {
         replied_ = true;
