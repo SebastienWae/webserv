@@ -211,8 +211,49 @@ void Server::getHandler(Client* client, ServerConfig const* server_config) {
 
 // TODO
 void Server::headHandler(Client* client, ServerConfig const* server_config) {
-  HttpResponse* response = new HttpResponse(HttpResponseSuccess::_200, server_config);
+  HttpRequest const* req = client->getRequest();
+  Uri const* uri = req->getUri();
+  Route const* route = server_config->matchRoute(uri);
+
+  HttpResponse* response;
+  if (route->isAllowedMethod(Http::HEAD)) {
+    if (route->isRedirection()) {
+      response = new HttpResponse(route->getRedirection().first, route->getRedirection().second->getRaw());
+    } else {
+      try {
+        File* target = route->matchCGI(uri);
+        if (target == nullptr) {
+          target = route->matchFile(uri);
+          if (target->getType() == File::DI) {
+            if (route->isDirectoryListing()) {
+              response = new HttpResponse(HttpResponseSuccess::_200, 0);
+            } else {
+              delete target;
+              target = route->getDirecoryPage();
+              if (target == nullptr || !target->exist() || !target->isReadable() || !(target->getType() == File::REG)) {
+                response = new HttpResponse(HttpResponseClientError::_403, 0);
+              } else {
+                response = new HttpResponse(HttpResponseSuccess::_200, 0);
+              }
+            }
+          } else {
+            response = new HttpResponse(HttpResponseSuccess::_200, 0);
+          }
+        } else {
+          response = new HttpResponse(HttpResponseSuccess::_200, 0);
+        }
+      } catch (Route::NotFoundException) {
+        response = new HttpResponse(HttpResponseClientError::_404, 0);
+      } catch (Route::ForbiddenException) {
+        response = new HttpResponse(HttpResponseClientError::_403, 0);
+      }
+    }
+  } else {
+    response = new HttpResponse(HttpResponseClientError::_405, 0);
+  }
+
   client->setReponse(response);
+  updateEvents(client->getSocket(), EVFILT_WRITE, EV_ADD | EV_ENABLE);
 }
 
 void Server::postHandler(Client* client, ServerConfig const* server_config) {
