@@ -283,7 +283,6 @@ void Server::postHandler(Client* client, ServerConfig const* server_config) {
   updateEvents(client->getSocket(), EVFILT_WRITE, EV_ADD | EV_ENABLE);
 }
 
-// TODO
 void Server::deleteHandler(Client* client, ServerConfig const* server_config) {
   HttpRequest const* req = client->getRequest();
   Uri const* uri = req->getUri();
@@ -302,14 +301,12 @@ void Server::deleteHandler(Client* client, ServerConfig const* server_config) {
         if (target->isWritable()) {
           if (target->getType() == File::DI) {
             if (remove(target->getPath().c_str()) != 0) {
-              // directory not empty
               response = new HttpResponse(HttpResponseClientError::_403, server_config);
             } else {
               response = new HttpResponse(HttpResponseSuccess::_200, "Directory deleted.", "text/html", server_config);
             }
           } else {
             if (remove(target->getPath().c_str()) != 0) {
-              // not supposed to happen
               response = new HttpResponse(HttpResponseServerError::_500, server_config);
             } else {
               response = new HttpResponse(HttpResponseSuccess::_200, "File deleted.", "text/html", server_config);
