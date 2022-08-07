@@ -15,6 +15,16 @@ public:
   CGI(Client* client, ServerConfig const* server_config, File const* target, std::string const& method);
   ~CGI();
 
+  class CGIException : public std::exception {
+  public:
+    CGIException(std::string const& msg) throw();
+    ~CGIException() throw();
+    virtual const char* what() const throw();
+
+  private:
+    std::string msg_;
+  };
+
   void execute();
 
 private:

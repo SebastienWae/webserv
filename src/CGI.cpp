@@ -78,39 +78,56 @@ CGI::CGI(Client* client, ServerConfig const* server_config, File const* target, 
 
 CGI::~CGI() {}
 
+CGI::CGIException::CGIException(std::string const& msg) throw() : msg_(msg) {}
+CGI::CGIException::~CGIException() throw() {}
+char const* CGI::CGIException::what() const throw() { return msg_.c_str(); }
+
 void CGI::execute() {
-  char* arr[env_.size() + 1];
-  for (std::vector<std::string>::iterator it = env_.begin(); it != env_.end(); ++it) {
-    arr[std::distance(env_.begin(), it)] = const_cast<char*>(it->c_str());
-  }
-  arr[env_.size()] = NULL;
+  try {
+    char* arr[env_.size() + 1];
+    for (std::vector<std::string>::iterator it = env_.begin(); it != env_.end(); ++it) {
+      arr[std::distance(env_.begin(), it)] = const_cast<char*>(it->c_str());
+    }
+    arr[env_.size()] = NULL;
 
-  // TODO: check pipe return
-  int pipe_fd[2];
-  pipe(pipe_fd);
+    int pipe_fd[2];
+    if (pipe(pipe_fd) < 0) {
+      throw CGIException("CGI: Pipe failed");
+    }
 
-  pid_t pid;
-  pid = fork();
-  if (pid == 0) {
-    // TODO check output of chdir
-    chdir(cwd_.c_str());
-    close(pipe_fd[1]);
-    dup2(pipe_fd[0], STDIN_FILENO);
+    pid_t pid;
+    pid = fork();
+    if (pid < 0) {
+      close(pipe_fd[1]);
+      close(pipe_fd[0]);
+      throw CGIException("CGI: Fork failed");
+    }
+    if (pid == 0) {
+      if (chdir(cwd_.c_str()) < 0) {
+        close(pipe_fd[1]);
+        close(pipe_fd[0]);
+        throw CGIException("CGI: Chdir failed");
+      }
+      close(pipe_fd[1]);
+      dup2(pipe_fd[0], STDIN_FILENO);
+      dup2(client_->getSocket(), STDOUT_FILENO);
+      if (execve(target_->getPath().c_str(), NULL, arr) < 0) {
+        close(pipe_fd[0]);
+        throw CGIException("CGI: Execve failed");
+      };
+      close(pipe_fd[0]);
+      std::exit(EXIT_FAILURE);
+    } else {
+      // TODO: handle large content
+      close(pipe_fd[0]);
 
-    dup2(client_->getSocket(), STDOUT_FILENO);
+      std::vector<uint8_t> content = client_->getRequest()->getBody();
+      write(pipe_fd[1], &(content[0]), content.size());
 
-    execve(target_->getPath().c_str(), NULL, arr);
+      close(pipe_fd[1]);
 
-    close(pipe_fd[0]);
-    std::exit(EXIT_FAILURE);
-  } else {
-    close(pipe_fd[0]);
-
-    std::vector<uint8_t> content = client_->getRequest()->getBody();
-    write(pipe_fd[1], &(content[0]), content.size());
-
-    close(pipe_fd[1]);
-
-    client_->setCGIPID(pid);
+      client_->setCGIPID(pid);
+    }
+  } catch (CGIException& e) {
   }
 }
