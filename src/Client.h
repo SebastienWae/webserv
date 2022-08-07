@@ -10,6 +10,7 @@
 #include <ctime>
 #include <exception>
 
+#include "Config.h"
 #include "HttpRequest.h"
 #include "HttpResponse.h"
 
@@ -29,7 +30,7 @@ public:
 
   int getSocket() const;
 
-  void read(unsigned int bytes) throw(ReadException);
+  void read(unsigned int bytes, Config const& config) throw(ReadException);
   void send(unsigned int bytes) throw(WriteException);
 
   HttpRequest* getRequest() const;
