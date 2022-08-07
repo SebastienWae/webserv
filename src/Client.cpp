@@ -1,5 +1,6 @@
 #include "Client.h"
 
+#include <_types/_uint8_t.h>
 #include <sys/_types/_pid_t.h>
 #include <sys/signal.h>
 #include <sys/socket.h>
@@ -7,6 +8,7 @@
 
 #include <__nullptr>
 #include <cstring>
+#include <vector>
 
 #include "HttpRequest.h"
 #include "HttpResponse.h"
@@ -37,12 +39,11 @@ int Client::getSocket() const { return socket_; }
 void Client::read(unsigned int bytes) throw(ReadException) {
   INFO("Reading data");
 
-  char* data = new char[bytes + 1];
-  bzero(data, bytes + 1);
-  std::size_t len = recv(socket_, data, bytes, 0);
+  std::vector<uint8_t> data(bytes, 0);
+
+  std::size_t len = recv(socket_, reinterpret_cast<char*>(&data[0]), bytes, 0);
 
   if (len <= 0) {
-    delete[] data;
     throw ReadException();
   }
 
@@ -55,8 +56,6 @@ void Client::read(unsigned int bytes) throw(ReadException) {
   if (request_->getStatus() != HttpRequest::S_CONTINUE) {
     reading_ = false;
   }
-
-  delete[] data;
 }
 
 void Client::send(unsigned int bytes) throw(WriteException) {
@@ -72,11 +71,8 @@ void Client::send(unsigned int bytes) throw(WriteException) {
     std::string response;
     if (replying_) {
       try {
-        char* r = response_->getContent(bytes);
-        if (r != nullptr) {
-          ::send(socket_, r, bytes, 0);
-          free(r);
-        }
+        std::vector<uint8_t> resp = response_->getContent(bytes);
+        ::send(socket_, reinterpret_cast<char*>(&resp[0]), bytes, 0);
         return;
       } catch (HttpResponse::EndOfResponseException& e) {
         replied_ = true;

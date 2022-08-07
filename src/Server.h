@@ -19,7 +19,7 @@
 
 #define KQ_SIZE 1024
 #define INVALID_SOCKET -1
-#define TIMEOUT 100
+#define TIMEOUT 30
 
 class Server {
 public:

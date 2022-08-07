@@ -1,6 +1,8 @@
 #ifndef HTTPREQUEST_H
 #define HTTPREQUEST_H
 
+#include <_types/_uint8_t.h>
+
 #include <ctime>
 #include <exception>
 #include <map>
@@ -27,9 +29,9 @@ public:
   typedef std::map<std::string, enum Http::method> MethodMap;
   static const MethodMap method_map;
 
-  HttpRequest(std::string const& raw);
+  HttpRequest(std::vector<uint8_t> const& data);
 
-  bool addChunk(std::string const& chunk);
+  bool addChunk(std::vector<uint8_t> const& chunk);
 
   ~HttpRequest();
 
@@ -38,8 +40,10 @@ public:
   enum Http::method getMethod() const;
   Uri const* getUri() const;
   std::map<std::string, std::string> const& getHeaders() const;
-  std::string const& getBody() const;
+  std::vector<uint8_t> const& getBody() const;
   std::string getHost() const;
+
+  bool isFileUpload() const;
 
 private:
   enum req_parse_state {
@@ -58,7 +62,7 @@ private:
   enum Http::method method_;
   Uri* uri_;
   std::map<std::string, std::string> headers_;
-  std::string body_;
+  std::vector<uint8_t> body_;
 };
 
 #endif

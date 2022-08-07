@@ -1,17 +1,23 @@
 #include "CGI.h"
 
+#include <_types/_uint8_t.h>
 #include <sys/errno.h>
 #include <unistd.h>
 
 #include <cstdlib>
 #include <cstring>
+#include <vector>
 
-#include "Log.h"
+#include "File.h"
 
 CGI::CGI(Client* client, ServerConfig const* server_config, File const* target, std::string const& method)
     : target_(target), client_(client) {
   HttpRequest const* req = client->getRequest();
   Uri const* uri = req->getUri();
+
+  std::string script_path = server_config->matchRoute(uri)->matchCGI(uri)->getPath();
+  std::string::size_type sep = script_path.find_last_of('/');
+  cwd_ = script_path.substr(0, sep);
 
   std::map<std::string, std::string> headers = req->getHeaders();
 
@@ -27,8 +33,7 @@ CGI::CGI(Client* client, ServerConfig const* server_config, File const* target, 
   std::string gate_way = "GATEWAY_INTERFACE=CGI/1.1";
   env_.push_back(gate_way);
 
-  std::string path_translated
-      = "PATH_TRANSLATED=" + server_config->matchRoute(uri)->matchCGI(uri)->getPath() + uri->getDecodedPath();
+  std::string path_translated = "PATH_TRANSLATED=" + script_path;
   env_.push_back(path_translated);
 
   std::string query_string = "QUERY_STRING=" + uri->getQuery();
@@ -80,12 +85,33 @@ void CGI::execute() {
   }
   arr[env_.size()] = NULL;
 
+  // TODO: check pipe return
+  int pipe_fd[2];
+  pipe(pipe_fd);
+
   pid_t pid;
   pid = fork();
   if (pid == 0) {
+    // TODO check output of chdir
+    chdir(cwd_.c_str());
+    close(pipe_fd[1]);
+    dup2(pipe_fd[0], STDIN_FILENO);
+
     dup2(client_->getSocket(), STDOUT_FILENO);
+
     execve(target_->getPath().c_str(), NULL, arr);
+
+    close(pipe_fd[0]);
     std::exit(EXIT_FAILURE);
+  } else {
+    // TODO: handle large content
+    close(pipe_fd[0]);
+
+    std::vector<uint8_t> content = client_->getRequest()->getBody();
+    write(pipe_fd[1], &(content[0]), content.size());
+
+    close(pipe_fd[1]);
+
+    client_->setCGIPID(pid);
   }
-  client_->setCGIPID(pid);
 }

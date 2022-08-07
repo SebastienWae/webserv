@@ -1,5 +1,7 @@
 #include "HttpResponse.h"
 
+#include <_types/_uint8_t.h>
+
 #include <__nullptr>
 #include <cstddef>
 #include <cstdlib>
@@ -9,6 +11,7 @@
 #include <map>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "File.h"
 #include "Http.h"
@@ -31,6 +34,7 @@ HttpResponse::HttpResponse(HttpResponseSuccess::code status_code, ServerConfig c
       file_(nullptr) {
   headers_["connection"] = "close";
   headers_["content-length"] = "0";
+  headers_["content-type"] = "text/plain";
 }
 
 HttpResponse::HttpResponse(HttpResponseSuccess::code status_code, std::string const& body,
@@ -105,6 +109,7 @@ HttpResponse::HttpResponse(HttpResponseServerError::code status_code, ServerConf
   headers_["connection"] = "close";
   headers_["content-length"] = getContentLenght();
 }
+
 HttpResponse::~HttpResponse() {
   if (file_ != nullptr) {
     delete file_;
@@ -146,28 +151,25 @@ std::string HttpResponse::getHeaders() const {
   return result;
 }
 
-char* HttpResponse::getContent(std::size_t len) {
-  char* response = reinterpret_cast<char*>(std::calloc(len + 1, sizeof(char)));
-  if (response != nullptr) {
-    if (file_ != nullptr) {
-      len = len == 0 ? 1 : len;
-      if (file_->getIStream()->good() || !file_->getIStream()->eof()) {
-        file_->getIStream()->read(response, len);  // NOLINT
-        response[len] = 0;
-      } else {
-        throw EndOfResponseException();
-      }
+std::vector<uint8_t> HttpResponse::getContent(std::size_t len) {
+  std::vector<uint8_t> response(len, 0);
+  if (file_ != nullptr) {
+    len = len == 0 ? 1 : len;
+    if (file_->getIStream()->good() || !file_->getIStream()->eof()) {
+      file_->getIStream()->read(reinterpret_cast<char*>(&response[0]), len);  // NOLINT
     } else {
-      if (body_.empty()) {
-        throw EndOfResponseException();
-      }
-      if (len == 0 || len >= body_.size()) {
-        std::memmove(response, body_.c_str(), body_.size());
-        body_.erase();
-      } else {
-        std::memmove(response, body_.c_str(), len);
-        body_ = body_.substr(len + 1);
-      }
+      throw EndOfResponseException();
+    }
+  } else {
+    if (body_.empty()) {
+      throw EndOfResponseException();
+    }
+    if (len == 0 || len >= body_.size()) {
+      response.insert(response.begin(), body_.begin(), body_.end());
+      body_.erase();
+    } else {
+      response.insert(response.begin(), body_.begin(), body_.begin() + len);  // NOLINT
+      body_ = body_.substr(len + 1);
     }
   }
   return response;

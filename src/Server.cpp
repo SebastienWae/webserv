@@ -1,9 +1,12 @@
 #include "Server.h"
 
+#include <_types/_uint8_t.h>
 #include <sys/signal.h>
 
 #include <__nullptr>
+#include <fstream>
 #include <iostream>
+#include <ostream>
 #include <vector>
 
 #include "CGI.h"
@@ -14,6 +17,7 @@
 #include "HttpResponseStatus.h"
 #include "Log.h"
 #include "ServerConfig.h"
+
 Server::Server(Config const& config) : config_(config), kq_(kqueue()) {}
 
 Server::~Server() {
@@ -168,74 +172,40 @@ void Server::getHandler(Client* client, ServerConfig const* server_config) {
         if (target == nullptr) {
           target = route->matchFile(uri);
           if (target->getType() == File::DI) {
-            response = new HttpResponse(HttpResponseSuccess::_200, target->getListing(uri->getDecodedPath()),
-                                        "text/html", server_config);
+            if (route->isDirectoryListing()) {
+              response = new HttpResponse(HttpResponseSuccess::_200, target->getListing(uri->getDecodedPath()),
+                                          "text/html", server_config);
+            } else {
+              delete target;
+              target = route->getDirecoryPage();
+              if (target == nullptr || !target->exist() || !target->isReadable() || !(target->getType() == File::REG)) {
+                response = new HttpResponse(HttpResponseClientError::_403, server_config);
+              } else {
+                response
+                    = new HttpResponse(HttpResponseSuccess::_200, target->getContent(), "text/html", server_config);
+              }
+            }
           } else {
             response = new HttpResponse(HttpResponseSuccess::_200, target, server_config);
           }
-          updateEvents(client->getSocket(), EVFILT_WRITE, EV_ADD | EV_ENABLE);
         } else {
           CGI script(client, server_config, target, "GET");
           script.execute();
+          updateEvents(client->getSocket(), EVFILT_WRITE, EV_ADD | EV_ENABLE);
           return;
         }
       } catch (Route::NotFoundException) {
         response = new HttpResponse(HttpResponseClientError::_404, server_config);
-        updateEvents(client->getSocket(), EVFILT_WRITE, EV_ADD | EV_ENABLE);
       } catch (Route::ForbiddenException) {
         response = new HttpResponse(HttpResponseClientError::_403, server_config);
-        updateEvents(client->getSocket(), EVFILT_WRITE, EV_ADD | EV_ENABLE);
       }
     }
   } else {
     response = new HttpResponse(HttpResponseClientError::_405, server_config);
   }
   client->setReponse(response);
+  updateEvents(client->getSocket(), EVFILT_WRITE, EV_ADD | EV_ENABLE);
 }
-
-// File* cgi_dir = route->matchCGI(req->getUri()->getDecodedPath());
-// if (cgi_dir != NULL && cgi_dir->exist() && cgi_dir->getType() == File::DIR && cgi_dir->isReadable()
-//     && cgi_dir->isExecutable()) {
-//   std::string tmp = cgi_dir->getPath() + client->getRequest()->getUri()->getPath();
-
-//   File file(tmp);
-//   if (!file.exist()) {
-//     response = new HttpResponse(HttpResponseClientError::_404, server_config);
-//   } else if (!file.isExecutable() || file.getType() != File::REG) {
-//     response = new HttpResponse(HttpResponseClientError::_403, server_config);
-//   } else {
-//     Cgi cgitest(client, server_config, "GET");
-//     cgitest.executeCgi(file.getPath());
-//     return;
-//   }
-// } else {
-//   updateEvents(client->getSocket(), EVFILT_WRITE, EV_ADD | EV_ENABLE);
-//   File* file = route->matchFile(req->getUri());
-//   if (file != NULL && file->isReadable()) {
-//     if (file->getType() == File::REG) {
-//       response = new HttpResponse(HttpResponseSuccess::_200, file->getContent(), "text/html", server_config);
-//     } else if (file->getType() == File::DIR) {
-//       response = new HttpResponse(HttpResponseSuccess::_200,
-//                                   Directory::html(file->getPath(), server_config->getHost() +
-//                                   req->getUri()->getPath()), "text/html", server_config);
-//     } else {
-//       // wrong type
-//       response = new HttpResponse(HttpResponseSuccess::_200, server_config);
-//     }
-//   } else {
-//     // wrong perm
-//     response = new HttpResponse(HttpResponseSuccess::_200, server_config);
-//   }
-// }
-// }
-// }
-// else {
-//   response = new HttpResponse(HttpResponseClientError::_405, server_config);
-// }
-
-// client->setReponse(response);
-// delete response;
-// }
 
 // TODO
 void Server::headHandler(Client* client, ServerConfig const* server_config) {
@@ -243,10 +213,72 @@ void Server::headHandler(Client* client, ServerConfig const* server_config) {
   client->setReponse(response);
 }
 
-// TODO
 void Server::postHandler(Client* client, ServerConfig const* server_config) {
-  HttpResponse* response = new HttpResponse(HttpResponseSuccess::_200, server_config);
+  HttpRequest const* req = client->getRequest();
+  Uri const* uri = req->getUri();
+  Route const* route = server_config->matchRoute(uri);
+
+  HttpResponse* response;
+  if (route->isAllowedMethod(Http::POST)) {
+    if (route->isRedirection()) {
+      response = new HttpResponse(route->getRedirection().first, route->getRedirection().second->getRaw());
+    } else {
+      try {
+        File* target = route->matchCGI(uri);
+        if (target == nullptr) {
+          target = route->matchFile(uri);
+          if (target->getType() == File::DI) {
+            if (route->isDirectoryListing()) {
+              response = new HttpResponse(HttpResponseSuccess::_200, target->getListing(uri->getDecodedPath()),
+                                          "text/html", server_config);
+            } else {
+              delete target;
+              target = route->getDirecoryPage();
+              if (target == nullptr || !target->exist() || !target->isReadable() || !(target->getType() == File::REG)) {
+                response = new HttpResponse(HttpResponseClientError::_403, server_config);
+              } else {
+                response
+                    = new HttpResponse(HttpResponseSuccess::_200, target->getContent(), "text/html", server_config);
+              }
+            }
+          } else {
+            response = new HttpResponse(HttpResponseSuccess::_200, target, server_config);
+          }
+        } else {
+          CGI script(client, server_config, target, "POST");
+          script.execute();
+          updateEvents(client->getSocket(), EVFILT_WRITE, EV_ADD | EV_ENABLE);
+          return;
+        }
+      } catch (Route::NotFoundException) {
+        if (req->isFileUpload()) {
+          File* target = route->getUploadStore();
+          if (target != nullptr && target->exist() && target->isWritable() && target->getType() == File::DI) {
+            // TODO: check if content emtpy -> 204
+            // TODO: check if  wrong content -> 206
+            File out(target->getPath() + "/test.pdf");
+            if (out.exist()) {
+              response = new HttpResponse(HttpResponseClientError::_409, server_config);
+            } else {
+              std::vector<uint8_t> file = req->getBody();
+              out.getOStream()->write(reinterpret_cast<char*>(&file[0]), file.size());  // NOLINT
+              response = new HttpResponse(HttpResponseSuccess::_201, server_config);
+            }
+          } else {
+            response = new HttpResponse(HttpResponseClientError::_403, server_config);
+          }
+        } else {
+          response = new HttpResponse(HttpResponseClientError::_404, server_config);
+        }
+      } catch (Route::ForbiddenException) {
+        response = new HttpResponse(HttpResponseClientError::_403, server_config);
+      }
+    }
+  } else {
+    response = new HttpResponse(HttpResponseClientError::_405, server_config);
+  }
   client->setReponse(response);
+  updateEvents(client->getSocket(), EVFILT_WRITE, EV_ADD | EV_ENABLE);
 }
 
 // TODO

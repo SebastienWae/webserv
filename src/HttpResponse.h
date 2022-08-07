@@ -1,9 +1,12 @@
 #ifndef HTTPRESPONSE_H
 #define HTTPRESPONSE_H
 
+#include <_types/_uint8_t.h>
+
 #include <cstddef>
 #include <map>
 #include <string>
+#include <vector>
 
 #include "HttpResponseStatus.h"
 #include "ServerConfig.h"
@@ -24,7 +27,7 @@ public:
   ~HttpResponse();
 
   std::string getHeaders() const;
-  char* getContent(std::size_t len);
+  std::vector<uint8_t> getContent(std::size_t len);
 
 private:
   ServerConfig const* server_config_;

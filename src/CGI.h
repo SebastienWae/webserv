@@ -21,6 +21,7 @@ private:
   std::vector<std::string> env_;
   File const* target_;
   Client* client_;
+  std::string cwd_;
 };
 
 #endif
