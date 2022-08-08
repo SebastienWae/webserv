@@ -12,7 +12,7 @@ std::vector<std::pair<std::string const, std::string const> > HttpResponseInfo::
 
 std::vector<std::pair<std::string const, std::string const> > initResponseSuccess() {
   std::vector<std::pair<std::string const, std::string const> > v;
-  v.push_back(std::pair<std::string const, std::string>("200", "Ok"));
+  v.push_back(std::pair<std::string const, std::string>("200", "OK"));
   v.push_back(std::pair<std::string const, std::string>("201", "Created"));
   v.push_back(std::pair<std::string const, std::string>("202", "Accepted"));
   v.push_back(std::pair<std::string const, std::string>("203", "Non-Authoritative Information"));

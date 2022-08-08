@@ -44,7 +44,7 @@ public:
   bool isAllowedMethod(enum Http::method method) const;
 
   File* matchFile(Uri const* uri) const;
-  File* matchCGI(Uri const* uri) const;
+  std::pair<std::string, File*> matchCGI(Uri const* uri) const;
   File* matchFileUpload(Uri const* uri) const;
 
 private:

@@ -1,23 +1,28 @@
 #include "CGI.h"
 
+#include <_ctype.h>
 #include <_types/_uint8_t.h>
 #include <sys/errno.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
+#include <string>
 #include <vector>
 
 #include "File.h"
 
-CGI::CGI(Client* client, ServerConfig const* server_config, File const* target, std::string const& method)
-    : target_(target), client_(client) {
+CGI::CGI(Client* client, ServerConfig const* server_config, std::pair<std::string, File*> const& cgi_pair,
+         std::string const& method)
+    : target_(cgi_pair.second), client_(client) {
   HttpRequest const* req = client->getRequest();
   Uri const* uri = req->getUri();
 
-  std::string script_path = server_config->matchRoute(uri)->matchCGI(uri)->getPath();
-  std::string::size_type sep = script_path.find_last_of('/');
-  cwd_ = script_path.substr(0, sep);
+  std::string::size_type ext = target_->getPath().find(cgi_pair.first) + cgi_pair.first.size();
+  std::string script_dir = target_->getPath().substr(0, ext);
+  std::string::size_type sep = script_dir.find_last_of('/');
+  cwd_ = script_dir.substr(0, sep);
 
   std::map<std::string, std::string> headers = req->getHeaders();
 
@@ -33,7 +38,13 @@ CGI::CGI(Client* client, ServerConfig const* server_config, File const* target, 
   std::string gate_way = "GATEWAY_INTERFACE=CGI/1.1";
   env_.push_back(gate_way);
 
-  std::string path_translated = "PATH_TRANSLATED=" + script_path;
+  ext = uri->getDecodedPath().find(cgi_pair.first);
+  ext += cgi_pair.first.size();
+  std::string info = uri->getDecodedPath().substr(ext);
+  std::string path_info = "PATH_INFO=" + info;
+  env_.push_back(path_info);
+
+  std::string path_translated = "PATH_TRANSLATED=" + script_dir;
   env_.push_back(path_translated);
 
   std::string query_string = "QUERY_STRING=" + uri->getQuery();
@@ -71,7 +82,9 @@ CGI::CGI(Client* client, ServerConfig const* server_config, File const* target, 
 
   for (std::map<std::string, std::string>::iterator it = headers.begin(); it != headers.end(); ++it) {
     if (it->first != "authentication" && it->first != "content-lenght" && it->first != "content-type") {
-      env_.push_back("HTTP_" + it->first + "=" + it->second);
+      std::string name = it->first;
+      std::transform(name.begin(), name.end(), name.begin(), ::toupper);
+      env_.push_back("HTTP_" + name + "=" + it->second);
     }
   }
 }

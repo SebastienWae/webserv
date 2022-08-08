@@ -225,37 +225,43 @@ File* Route::matchFileUpload(Uri const* uri) const {
   return file;
 }
 
-File* Route::matchCGI(Uri const* uri) const {
+// TODO: exception
+std::pair<std::string, File*> Route::matchCGI(Uri const* uri) const {
   std::string uri_path = uri->getDecodedPath();
-  std::string::size_type sep = uri_path.find_last_of('.');
-  if (sep != std::string::npos) {
-    std::string ext = uri_path.substr(sep);
-    std::map<std::string, File*>::const_iterator cgi = cgi_.find(ext);
-    if (cgi != cgi_.end()) {
-      File* cgi_dir = cgi->second;
-      if (cgi_dir != nullptr && cgi_dir->exist() && cgi_dir->getType() == File::DI && cgi_dir->isExecutable()
-          && cgi_dir->isReadable()) {
-        std::string file_path;
-        std::string route_path = this->location_;
-        if (uri_path.size() > route_path.size()) {
-          file_path = uri_path.substr(route_path.size());
-        }
-        if (!file_path.empty()) {
-          file_path = "/" + file_path;
-        }
-        std::string absolute_path = root_->getPath() + file_path;
-        File* script = new File(absolute_path);
-        if (script == nullptr || !script->exist() || !(script->getType() == File::REG)) {
-          delete script;
-          throw NotFoundException();
-        }
-        if (!script->isExecutable()) {
-          delete script;
-          throw ForbiddenException();
-        }
-        return script;
+
+  std::string request_path = uri_path.substr(location_.size());
+  if (request_path.empty()) {
+    request_path = "/";
+  }
+  std::string::size_type ext = 0;
+  std::pair<std::string, File*> cgi_pair("", nullptr);
+  for (std::map<std::string, File*>::const_iterator it = cgi_.begin(); it != cgi_.end(); ++it) {
+    std::string::size_type it_ext = request_path.find(it->first);
+    if (it_ext != std::string::npos) {
+      if (ext == 0 || it_ext < ext) {
+        ext = it_ext;
+        cgi_pair = *it;
       }
     }
   }
-  return nullptr;
+
+  File* cgi_dir = cgi_pair.second;
+  if (cgi_dir != nullptr && cgi_dir->exist() && cgi_dir->getType() == File::DI && cgi_dir->isExecutable()
+      && cgi_dir->isReadable()) {
+    std::string file_path = request_path.substr(0, ext + cgi_pair.first.size());
+
+    std::string absolute_path = cgi_dir->getPath() + file_path;
+    File* script = new File(absolute_path);
+    if (script == nullptr || !script->exist() || !(script->getType() == File::REG)) {
+      delete script;
+      throw NotFoundException();
+    }
+    if (!script->isExecutable()) {
+      delete script;
+      throw ForbiddenException();
+    }
+    cgi_pair.second = script;
+  }
+
+  return cgi_pair;
 }
