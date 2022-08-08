@@ -26,6 +26,8 @@ public:
   Config(std::string const& config_path);
   ~Config();
 
+  void parse();
+
   std::set<std::string> getPorts() const;
 
   ServerConfig const* matchServerConfig(std::string const& host) const;
@@ -34,8 +36,7 @@ private:
   enum parse_state { S_NONE, S_IN_SERVER };
 
   std::vector<ServerConfig*> servers_;
-
-  void parse(std::ifstream* file);
+  File file_;
 };
 
 #endif

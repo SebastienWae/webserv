@@ -9,7 +9,7 @@ DEBUG_DIR = debug
 
 CXX = clang++
 WARNING = -Wall -Wextra -Werror
-CXXFLAGS = -O0
+CXXFLAGS = -O2
 
 
 SRCS = main.cpp \

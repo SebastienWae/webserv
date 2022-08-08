@@ -28,6 +28,9 @@ Route::~Route() {
   if (upload_store_ != NULL) {
     delete upload_store_;
   }
+  for (std::map<std::string, File*>::const_iterator it = cgi_.begin(); it != cgi_.end(); ++it) {
+    delete it->second;
+  }
 }
 
 Route::ParsingException::ParsingException(std::string const& msg) throw() : msg_(msg) {}
@@ -225,7 +228,6 @@ File* Route::matchFileUpload(Uri const* uri) const {
   return file;
 }
 
-// TODO: exception
 std::pair<std::string, File*> Route::matchCGI(Uri const* uri) const {
   std::string uri_path = uri->getDecodedPath();
 

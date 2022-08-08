@@ -1,5 +1,6 @@
 #include "Config.h"
 
+#include <__config>
 #include <cstddef>
 #include <fstream>
 #include <string>
@@ -9,13 +10,10 @@
 #include "Log.h"
 #include "ServerConfig.h"
 
-Config::Config(std::string const& config_path) {
+Config::Config(std::string const& config_path) : file_(File(config_path)) {
   INFO("Opening config file: " + config_path)
 
-  File file(config_path);
-  if (file.getType() == File::REG && file.isReadable() && file.getIStream() != NULL) {
-    parse(file.getIStream());
-  } else {
+  if (file_.getType() != File::REG || !file_.isReadable() || file_.getIStream() == NULL) {
     throw ParsingException("Cannot open config file: " + config_path);
   }
 }
@@ -31,7 +29,8 @@ Config::ParsingException::ParsingException(std::string const& msg) throw() : msg
 Config::ParsingException::~ParsingException() throw() {}
 char const* Config::ParsingException::what() const throw() { return msg_.c_str(); }
 
-void Config::parse(std::ifstream* file) {  // NOLINT
+void Config::parse() {  // NOLINT
+  std::ifstream* file = file_.getIStream();
   enum parse_state state = S_NONE;
   ServerConfig* current_server_config = NULL;
   Route* current_route = NULL;
