@@ -114,6 +114,7 @@ void Config::parse(std::ifstream* file) {  // NOLINT
       }
     }
   }
+  current_server_config->verify();
   if (servers_.empty()) {
     throw ParsingException("No server defined in the config file");
   }
