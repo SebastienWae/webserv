@@ -20,7 +20,7 @@
 Client::Client(int socket, struct in_addr sin_addr)
     : socket_(socket),
       timestamp_(std::time(nullptr)),
-      request_(NULL),
+      request_(nullptr),
       response_(nullptr),
       reading_(true),
       replying_(false),
@@ -34,6 +34,9 @@ Client::~Client() {
   }
   if (response_ != nullptr) {
     delete response_;
+  }
+  if (request_ != nullptr) {
+    delete request_;
   }
 }
 

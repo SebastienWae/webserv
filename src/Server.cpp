@@ -446,6 +446,7 @@ void Server::removeClient(Client* client) {
   closeConnection(socket);
   delete client;
   clients_.erase(socket);
+  exit(1);
 }
 
 void Server::updateEvents(int ident, short filter, u_short flags) {  // NOLINT
