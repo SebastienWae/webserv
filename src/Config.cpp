@@ -67,10 +67,10 @@ void Config::parse() {  // NOLINT
                   }
                 }
               } else {
-                throw ParsingException();
+                throw ParsingException("Config file error at line: " + line);
               }
             } catch (Uri::UriParsingException& s) {
-              throw ParsingException();
+              throw ParsingException("Config file error at line: " + line);
             }
             if (current_server_config == NULL) {
               current_server_config = new ServerConfig(hostname, port);
