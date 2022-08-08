@@ -110,11 +110,7 @@ HttpResponse::HttpResponse(HttpResponseServerError::code status_code, ServerConf
   headers_["content-length"] = getContentLenght();
 }
 
-HttpResponse::~HttpResponse() {
-  if (file_ != nullptr) {
-    delete file_;
-  }
-}
+HttpResponse::~HttpResponse() { delete file_; }
 
 std::string HttpResponse::getContentLenght() const {
   std::size_t size;

@@ -71,6 +71,7 @@ void Server::start() {  // NOLINT
             closeConnection(socket);
             ERROR("Client not found");
           } else if ((events_[i].flags & EV_EOF) != 0 || client->hasReplied()) {
+            return;
             removeClient(client);
           } else if (std::time(nullptr) - client->getTime() >= TIMEOUT) {
             timeoutClient(client);
@@ -186,6 +187,7 @@ void Server::getHandler(Client* client, ServerConfig const* server_config) {
             if (route->isDirectoryListing()) {
               response = new HttpResponse(HttpResponseSuccess::_200, target->getListing(uri->getDecodedPath()),
                                           "text/html", server_config);
+              delete target;
             } else {
               delete target;
               target = route->getDirecoryPage();
@@ -202,6 +204,7 @@ void Server::getHandler(Client* client, ServerConfig const* server_config) {
         } else {
           CGI script(client, server_config, cgi_pair, "GET");
           script.execute();
+          delete target;
           return;
         }
       } catch (Route::NotFoundException) {
@@ -240,6 +243,7 @@ void Server::postHandler(Client* client, ServerConfig const* server_config) {
               if (route->isDirectoryListing()) {
                 response = new HttpResponse(HttpResponseSuccess::_200, target->getListing(uri->getDecodedPath()),
                                             "text/html", server_config);
+                delete target;
               } else {
                 delete target;
                 target = route->getDirecoryPage();
@@ -258,6 +262,7 @@ void Server::postHandler(Client* client, ServerConfig const* server_config) {
         } else {
           CGI script(client, server_config, cgi_pair, "POST");
           script.execute();
+          delete target;
           return;
         }
       } catch (Route::NotFoundException) {
@@ -325,7 +330,13 @@ void Server::deleteHandler(Client* client, ServerConfig const* server_config) {
               response = new HttpResponse(HttpResponseSuccess::_200, "File deleted.", "text/html", server_config);
             }
           }
+          if (cgi_pair.first.empty()) {
+            delete target;
+          }
         } else {
+          if (cgi_pair.first.empty()) {
+            delete target;
+          }
           throw Route::ForbiddenException();
         }
       } catch (Route::NotFoundException) {
@@ -383,11 +394,13 @@ void Server::listenToPort(std::string const& port) {
     int y = 1;
     setsockopt(port_socket, SOL_SOCKET, SO_REUSEADDR, &y, sizeof(int));
     if (fcntl(port_socket, F_SETFL, O_NONBLOCK) == -1) {
+      freeaddrinfo(address_info);
       ERROR(std::strerror(errno));
       return;
     }
     if (bind(port_socket, tmp->ai_addr, tmp->ai_addrlen) < 0) {
       close(port_socket);
+      freeaddrinfo(address_info);
       ERROR(std::strerror(errno));
       continue;
     }
@@ -446,6 +459,7 @@ void Server::removeClient(Client* client) {
   closeConnection(socket);
   delete client;
   clients_.erase(socket);
+  exit(1);
 }
 
 void Server::updateEvents(int ident, short filter, u_short flags) {  // NOLINT

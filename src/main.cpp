@@ -3,6 +3,7 @@
 
 #include "Config.h"
 #include "Server.h"
+
 void run(Config const& config) {
   try {
     Server server(config);
@@ -14,8 +15,6 @@ void run(Config const& config) {
 }
 
 int main(int argc, char** argv) {
-  (void)argc;
-  (void)argv;
   if (argc == 1 || argc == 2) {
     std::string config_path;
     if (argc == 1) {
@@ -25,6 +24,7 @@ int main(int argc, char** argv) {
     }
     try {
       Config config(config_path);
+      config.parse();
       run(config);
     } catch (std::exception& e) {
       std::cerr << e.what() << std::endl;
