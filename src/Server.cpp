@@ -400,7 +400,6 @@ void Server::listenToPort(std::string const& port) {
     }
     if (bind(port_socket, tmp->ai_addr, tmp->ai_addrlen) < 0) {
       close(port_socket);
-      freeaddrinfo(address_info);
       ERROR(std::strerror(errno));
       continue;
     }
