@@ -178,7 +178,8 @@ void Server::getHandler(Client* client, ServerConfig const* server_config) {
       response = new HttpResponse(route->getRedirection().first, route->getRedirection().second->getRaw());
     } else {
       try {
-        File* target = route->matchCGI(uri);
+        std::pair<std::string, File*> cgi_pair = route->matchCGI(uri);
+        File* target = cgi_pair.second;
         if (target == nullptr) {
           target = route->matchFile(uri);
           if (target->getType() == File::DI) {
@@ -199,7 +200,7 @@ void Server::getHandler(Client* client, ServerConfig const* server_config) {
             response = new HttpResponse(HttpResponseSuccess::_200, target, server_config);
           }
         } else {
-          CGI script(client, server_config, target, "GET");
+          CGI script(client, server_config, cgi_pair, "GET");
           script.execute();
           return;
         }
@@ -226,7 +227,8 @@ void Server::postHandler(Client* client, ServerConfig const* server_config) {
       response = new HttpResponse(route->getRedirection().first, route->getRedirection().second->getRaw());
     } else {
       try {
-        File* target = route->matchCGI(uri);
+        std::pair<std::string, File*> cgi_pair = route->matchCGI(uri);
+        File* target = cgi_pair.second;
         if (target == nullptr) {
           std::map<std::string, std::string> headers = req->getHeaders();
           std::map<std::string, std::string>::const_iterator content_type = headers.find("content-type");
@@ -254,7 +256,7 @@ void Server::postHandler(Client* client, ServerConfig const* server_config) {
             }
           }
         } else {
-          CGI script(client, server_config, target, "POST");
+          CGI script(client, server_config, cgi_pair, "POST");
           script.execute();
           return;
         }
@@ -304,7 +306,8 @@ void Server::deleteHandler(Client* client, ServerConfig const* server_config) {
       response = new HttpResponse(route->getRedirection().first, route->getRedirection().second->getRaw());
     } else {
       try {
-        File* target = route->matchCGI(uri);
+        std::pair<std::string, File*> cgi_pair = route->matchCGI(uri);
+        File* target = cgi_pair.second;
         if (target == nullptr) {
           target = route->matchFile(uri);
         }

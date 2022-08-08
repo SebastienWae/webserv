@@ -333,7 +333,7 @@ std::string Uri::getDecodedPath() const {
         decoded += c;
     }
   }
-  if (decoded.back() == '/') {
+  if (decoded.back() == '/' && decoded.size() > 1) {
     decoded = decoded.substr(0, decoded.size() - 1);
   }
   return decoded;

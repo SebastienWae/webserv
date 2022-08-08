@@ -12,7 +12,8 @@
 
 class CGI {
 public:
-  CGI(Client* client, ServerConfig const* server_config, File const* target, std::string const& method);
+  CGI(Client* client, ServerConfig const* server_config, std::pair<std::string, File*> const& cgi_pair,
+      std::string const& method);
   ~CGI();
 
   class CGIException : public std::exception {
