@@ -100,43 +100,15 @@ Uri::Uri(std::string const& uri) throw(UriParsingException) : type_(Uri::TYPE_NO
           break;
         }
         case STATE_HOSTNAME: {
-          if (std::isalnum(*it) != 0 || *it == '.' || *it == '-') {
+          if (std::isalnum(*it) != 0 || *it == ';' || *it == ':' || *it == '&' || *it == '=' || *it == '+' || *it == '$'
+              || *it == ',' || *it == '-' || *it == '_' || *it == '.' || *it == '!' || *it == '~' || *it == '*'
+              || *it == '\'' || *it == '(' || *it == ')' || *it == '%') {
             ++it;
             if (it == uri.end() || *it == '/' || *it == ':' || *it == '?' || *it == '#') {
               host_ = uri.substr(std::distance(uri.begin(), last_token), std::distance(last_token, it));
               std::transform(host_.begin(), host_.end(), host_.begin(), ::tolower);
               if (host_.size() > LENGTHDNS) {
                 throw UriParsingException();
-              }
-              std::vector<std::string> sephostname;
-              std::string::size_type start = 0;
-              std::string::size_type end = 0;
-              for (size_t i = 0; i < host_.size(); i++) {
-                end = i;
-                if (host_.compare(i, strlen("."), ".") == 0) {
-                  sephostname.push_back(host_.substr(start, end - start));
-                  start = end + 1;
-                }
-              }
-              end++;
-              sephostname.push_back(host_.substr(start, end - start));
-              if (sephostname.size() == 1) {
-                if (sephostname[0] != "localhost") {
-                  throw UriParsingException();
-                }
-              }
-              if (sephostname.size() > 1) {
-                for (std::string::size_type i = 1; i != sephostname.size() - 1; i++) {
-                  if (sephostname[i].size() > LENGTHPARTDOTS) {
-                    throw UriParsingException();
-                  }
-                }
-              }
-              for (std::string::size_type i = 0; i != sephostname.size(); i++) {
-                if (std::isalnum(sephostname[i][0]) == 0
-                    || (std::isalnum(sephostname[i][sephostname[i].size() - 1]) == 0)) {
-                  throw UriParsingException();
-                }
               }
               if (*it == '/' || *it == ':' || *it == '?' || *it == '#') {
                 if (*it == '/' && *(it + 1) != '/') {
