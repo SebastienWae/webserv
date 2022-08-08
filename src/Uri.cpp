@@ -120,9 +120,16 @@ Uri::Uri(std::string const& uri) throw(UriParsingException) : type_(Uri::TYPE_NO
               }
               end++;
               sephostname.push_back(host_.substr(start, end - start));
-              for (std::string::size_type i = 1; i != sephostname.size() - 1; i++) {
-                if (sephostname[i].size() > LENGTHPARTDOTS) {
+              if (sephostname.size() == 1) {
+                if (sephostname[0] != "localhost") {
                   throw UriParsingException();
+                }
+              }
+              if (sephostname.size() > 1) {
+                for (std::string::size_type i = 1; i != sephostname.size() - 1; i++) {
+                  if (sephostname[i].size() > LENGTHPARTDOTS) {
+                    throw UriParsingException();
+                  }
                 }
               }
               for (std::string::size_type i = 0; i != sephostname.size(); i++) {
