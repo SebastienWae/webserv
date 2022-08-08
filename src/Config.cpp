@@ -113,7 +113,9 @@ void Config::parse() {  // NOLINT
       }
     }
   }
-  current_server_config->verify();
+  if (current_server_config != NULL) {
+    current_server_config->verify();
+  }
   if (servers_.empty()) {
     throw ParsingException("No server defined in the config file");
   }
