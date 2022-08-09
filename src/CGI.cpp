@@ -134,6 +134,17 @@ void CGI::execute() {
       close(pipe_fd[0]);
 
       std::vector<uint8_t> content = client_->getRequest()->getBody();
+      fd_set rfds;
+      struct timeval tv;
+      int retval;
+
+      FD_ZERO(&rfds);
+      FD_SET(0, &rfds);
+      tv.tv_sec = 1;
+      tv.tv_usec = 0;
+      retval = select(1, 0, &rfds, 0, &tv);
+      if (retval <= 0) {
+      }
       if (write(pipe_fd[1], &(content[0]), content.size()) <= 0) {
       }
 
