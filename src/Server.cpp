@@ -42,7 +42,7 @@ void Server::start() {
   }
 
   while (true) {
-    timespec timeout = {1, 0};
+    timespec timeout = {4, 0};
     int n_events = kevent(kq_, NULL, 0, events_, KQ_SIZE, &timeout);
     if (n_events == 0) {
       for (std::map<int, Client *>::iterator it = clients_.begin();
@@ -52,6 +52,8 @@ void Server::start() {
           break;
         }
       }
+    } else if (n_events < 0) {
+      std::exception();
     }
     // else if (n_events < 0) {
     //   throw std::exception();
@@ -498,8 +500,5 @@ void Server::updateEvents(int ident, short filter, u_short flags) {
   timespec timeout = {1, 0};
   struct kevent kev;
   EV_SET(&kev, ident, filter, flags, 0, 0, &timeout);
-  /*int n =*/kevent(kq_, &kev, 1, NULL, 0, 0);
-  // if (n < 0) {
-  //   throw std::exception();
-  // }
+  kevent(kq_, &kev, 1, NULL, 0, 0);
 }
