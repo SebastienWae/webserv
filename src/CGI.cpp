@@ -134,7 +134,8 @@ void CGI::execute() {
       close(pipe_fd[0]);
 
       std::vector<uint8_t> content = client_->getRequest()->getBody();
-      write(pipe_fd[1], &(content[0]), content.size());
+      if (write(pipe_fd[1], &(content[0]), content.size()) <= 0) {
+      }
 
       close(pipe_fd[1]);
 

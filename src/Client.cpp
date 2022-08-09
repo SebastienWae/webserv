@@ -63,7 +63,7 @@ void Client::read(unsigned int bytes, Config const& config) throw(ReadException)
       HttpResponse r(HttpResponseInfo::_100, sc);
       std::string r_continue = r.getHeaders();
       std::size_t len = ::send(socket_, r_continue.c_str(), r_continue.size(), 0);
-      if (len < 0) {
+      if (len <= 0) {
         ERROR(std::strerror(errno));
         throw WriteException();
       }
@@ -90,7 +90,7 @@ void Client::send(unsigned int bytes) throw(WriteException) {
       try {
         std::vector<uint8_t> resp = response_->getContent(bytes);
         std::size_t len = ::send(socket_, reinterpret_cast<char*>(&resp[0]), bytes, 0);
-        if (len < 0) {
+        if (len <= 0) {
           ERROR(std::strerror(errno));
           throw WriteException();
         }
@@ -104,7 +104,7 @@ void Client::send(unsigned int bytes) throw(WriteException) {
       replying_ = true;
     }
     std::size_t len = ::send(socket_, response.c_str(), response.size(), 0);
-    if (len < 0) {
+    if (len <= 0) {
       ERROR(std::strerror(errno));
       throw WriteException();
     }
