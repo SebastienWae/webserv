@@ -1,3 +1,6 @@
+#include <signal.h>
+#include <sys/signal.h>
+
 #include <exception>
 #include <iostream>
 
@@ -25,6 +28,7 @@ int main(int argc, char** argv) {
     try {
       Config config(config_path);
       config.parse();
+      signal(SIGPIPE, SIG_IGN);
       run(config);
     } catch (std::exception& e) {
       std::cerr << e.what() << std::endl;

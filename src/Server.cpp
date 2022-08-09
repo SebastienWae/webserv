@@ -71,7 +71,6 @@ void Server::start() {  // NOLINT
             closeConnection(socket);
             ERROR("Client not found");
           } else if ((events_[i].flags & EV_EOF) != 0 || client->hasReplied()) {
-            return;
             removeClient(client);
           } else if (std::time(nullptr) - client->getTime() >= TIMEOUT) {
             timeoutClient(client);
@@ -239,7 +238,10 @@ void Server::postHandler(Client* client, ServerConfig const* server_config) {
             response = new HttpResponse(HttpResponseClientError::_415, server_config);
           } else {
             target = route->matchFile(uri);
-            if (target->getType() == File::DI) {
+            if (target->exist() && req->isFileUpload()) {
+              response = new HttpResponse(HttpResponseClientError::_409, server_config);
+              delete target;
+            } else if (target->getType() == File::DI) {
               if (route->isDirectoryListing()) {
                 response = new HttpResponse(HttpResponseSuccess::_200, target->getListing(uri->getDecodedPath()),
                                             "text/html", server_config);
@@ -458,7 +460,6 @@ void Server::removeClient(Client* client) {
   closeConnection(socket);
   delete client;
   clients_.erase(socket);
-  exit(1);
 }
 
 void Server::updateEvents(int ident, short filter, u_short flags) {  // NOLINT

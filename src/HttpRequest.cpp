@@ -55,7 +55,8 @@ HttpRequest::HttpRequest(std::vector<uint8_t> const& data, Config const& config)
             } else {
               status_ = S_BAD_REQUEST;
             }
-          } else if (method == "OPTIONS" || method == "PUT" || method == "TRACE" || method == "CONNECT") {
+          } else if (method == "HEAD" || method == "OPTIONS" || method == "PUT" || method == "TRACE"
+                     || method == "CONNECT") {
             status_ = S_NOT_IMPLEMENTED;
           } else {
             status_ = S_BAD_REQUEST;

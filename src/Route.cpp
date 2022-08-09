@@ -103,8 +103,8 @@ void Route::parse(std::string const& line) {  // NOLINT
         std::string path = value.substr(sep + 1);
 
         int code_i = std::atoi(code.c_str());
-        if ((code_i - 300) >= 0 && (code_i - 300) < (307 - 300)) {                  // NOLINT
-          redirection_.first = static_cast<HttpResponseRedir::code>(code_i - 300);  // NOLINT
+        if ((code_i - 300) >= 0 && (code_i - 300) < (307 - 301) && code_i != 300 && code_i != 306) {  // NOLINT
+          redirection_.first = static_cast<HttpResponseRedir::code>(code_i - 300);                    // NOLINT
         } else {
           throw ParsingException("Config file error at line: " + line);
         }
@@ -230,15 +230,13 @@ File* Route::matchFileUpload(Uri const* uri) const {
 
 std::pair<std::string, File*> Route::matchCGI(Uri const* uri) const {
   std::string uri_path = uri->getDecodedPath();
-
-  std::string request_path = uri_path.substr(location_.size());
-  if (request_path.empty()) {
-    request_path = "/";
+  if (location_ != "/") {
+    uri_path = uri_path.substr(location_.size());
   }
   std::string::size_type ext = 0;
   std::pair<std::string, File*> cgi_pair("", nullptr);
   for (std::map<std::string, File*>::const_iterator it = cgi_.begin(); it != cgi_.end(); ++it) {
-    std::string::size_type it_ext = request_path.find(it->first);
+    std::string::size_type it_ext = uri_path.find(it->first);
     if (it_ext != std::string::npos) {
       if (ext == 0 || it_ext < ext) {
         ext = it_ext;
@@ -250,7 +248,7 @@ std::pair<std::string, File*> Route::matchCGI(Uri const* uri) const {
   File* cgi_dir = cgi_pair.second;
   if (cgi_dir != nullptr && cgi_dir->exist() && cgi_dir->getType() == File::DI && cgi_dir->isExecutable()
       && cgi_dir->isReadable()) {
-    std::string file_path = request_path.substr(0, ext + cgi_pair.first.size());
+    std::string file_path = uri_path.substr(0, ext + cgi_pair.first.size());
 
     std::string absolute_path = cgi_dir->getPath() + file_path;
     File* script = new File(absolute_path);

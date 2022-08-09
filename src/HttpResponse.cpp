@@ -23,8 +23,7 @@ HttpResponse::HttpResponse(HttpResponseInfo::code status_code, ServerConfig cons
       status_code_(HttpResponseInfo::status.at(status_code).first),
       reason_phrase_(HttpResponseInfo::status.at(status_code).second),
       file_(nullptr) {
-  headers_["connection"] = "close";
-  headers_["content-length"] = "0";
+  headers_["connection"] = "keep-alive";
 }
 
 HttpResponse::HttpResponse(HttpResponseSuccess::code status_code, ServerConfig const* server_config)
