@@ -63,7 +63,7 @@ void Config::parse() {  // NOLINT
                   && uri.getQuery().empty() && uri.getUserInfo().empty()) {
                 for (std::vector<ServerConfig*>::iterator it = servers_.begin(); it != servers_.end(); ++it) {
                   if ((*it)->getHostname() == hostname && (*it)->getPort() == port) {
-                    current_server_config = *it;
+                    throw ParsingException("Config file error at line: " + line);
                   }
                 }
               } else {

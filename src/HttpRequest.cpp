@@ -195,8 +195,11 @@ HttpRequest::HttpRequest(std::vector<uint8_t> const& data, Config const& config)
               ServerConfig const* sc = config.matchServerConfig(getHost());
               if (content_length_ > static_cast<long>(1 * GIGA) || content_length_ > sc->getMaxBodySize()) {
                 status_ = S_REQUEST_ENTITY_TOO_LARGE;
-              } else if (body_.size() > content_length_) {
+                break;
+              }
+              if (body_.size() > content_length_) {
                 status_ = S_BAD_REQUEST;
+                break;
               }
             }
 
