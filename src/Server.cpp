@@ -1,15 +1,12 @@
 #include "Server.h"
 
-#include <_types/_uint8_t.h>
-#include <dirent.h>
-#include <stdio.h>
-#include <sys/signal.h>
+#include <netdb.h>
+#include <sys/fcntl.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
-#include <__nullptr>
+#include <exception>
 #include <fstream>
-#include <iostream>
-#include <ostream>
-#include <vector>
 
 #include "CGI.h"
 #include "File.h"
@@ -23,8 +20,6 @@
 Server::Server(Config const& config) : config_(config), kq_(kqueue()) {}
 
 Server::~Server() {
-  INFO("Stoping server");
-
   for (std::vector<int>::iterator it = ports_socket_.begin(); it != ports_socket_.end(); ++it) {
     closeConnection(*it);
   }
@@ -37,9 +32,7 @@ Server::~Server() {
   close(kq_);
 }
 
-void Server::start() {  // NOLINT
-  INFO("Starting server");
-
+void Server::start() {
   std::set<std::string> ports = config_.getPorts();
   for (std::set<std::string>::const_iterator it = ports.begin(); it != ports.end(); ++it) {
     listenToPort(*it);
@@ -47,7 +40,7 @@ void Server::start() {  // NOLINT
 
   while (true) {
     timespec timeout = {1, 0};
-    int n_events = kevent(kq_, NULL, 0, events_, KQ_SIZE, &timeout);  // NOLINT
+    int n_events = kevent(kq_, NULL, 0, events_, KQ_SIZE, &timeout);
     if (n_events == 0) {
       for (std::map<int, Client*>::iterator it = clients_.begin(); it != clients_.end(); ++it) {
         if (std::time(nullptr) - (*it).second->getTime() >= TIMEOUT) {
@@ -56,7 +49,7 @@ void Server::start() {  // NOLINT
         }
       }
     } else if (n_events < 0) {
-      ERROR(std::strerror(errno));
+      throw std::exception();
     }
 
     for (int i = 0; i < n_events; ++i) {
@@ -69,7 +62,6 @@ void Server::start() {  // NOLINT
         try {
           if (client == NULL) {
             closeConnection(socket);
-            ERROR("Client not found");
           } else if ((events_[i].flags & EV_EOF) != 0 || client->hasReplied()) {
             removeClient(client);
           } else if (std::time(nullptr) - client->getTime() >= TIMEOUT) {
@@ -94,7 +86,6 @@ void Server::start() {  // NOLINT
           } else {
             removeClient(client);
           }
-          std::cerr << e.what() << std::endl;
         }
       }
     }
@@ -277,7 +268,7 @@ void Server::postHandler(Client* client, ServerConfig const* server_config) {
                 response = new HttpResponse(HttpResponseClientError::_409, server_config);
               } else {
                 std::vector<uint8_t> file = req->getBody();
-                upload->getOStream()->write(reinterpret_cast<char*>(&file[0]), file.size());  // NOLINT
+                upload->getOStream()->write(reinterpret_cast<char*>(&file[0]), file.size());
                 response = new HttpResponse(HttpResponseSuccess::_201, server_config);
               }
               delete upload;
@@ -355,7 +346,6 @@ void Server::deleteHandler(Client* client, ServerConfig const* server_config) {
 }
 
 void Server::timeoutClient(Client* client) {
-  INFO("Timeout client");
   if (client->isReading()) {
     HttpResponse* timeout_response;
     if (client->getRequest() != NULL) {
@@ -383,7 +373,6 @@ void Server::listenToPort(std::string const& port) {
   struct addrinfo* address_info;
   int error = getaddrinfo(NULL, port.c_str(), &hints, &address_info);
   if (error != 0) {
-    ERROR(gai_strerror(error));
     return;
   }
   int port_socket;
@@ -397,23 +386,19 @@ void Server::listenToPort(std::string const& port) {
     setsockopt(port_socket, SOL_SOCKET, SO_REUSEADDR, &y, sizeof(int));
     if (fcntl(port_socket, F_SETFL, O_NONBLOCK) == -1) {
       freeaddrinfo(address_info);
-      ERROR(std::strerror(errno));
       return;
     }
     if (bind(port_socket, tmp->ai_addr, tmp->ai_addrlen) < 0) {
       close(port_socket);
-      ERROR(std::strerror(errno));
       continue;
     }
     break;
   }
   freeaddrinfo(address_info);
   if (tmp == NULL) {
-    ERROR("Socket creation error");
     return;
   }
   if (listen(port_socket, KQ_SIZE) < 0) {
-    ERROR(std::strerror(errno));
     return;
   }
   ports_socket_.push_back(port_socket);
@@ -422,8 +407,6 @@ void Server::listenToPort(std::string const& port) {
 }
 
 void Server::closeConnection(int socket) {
-  INFO("Connection closed");
-
   updateEvents(socket, EVFILT_READ, EV_DELETE);
   updateEvents(socket, EVFILT_WRITE, EV_DELETE);
 
@@ -431,8 +414,6 @@ void Server::closeConnection(int socket) {
 }
 
 void Server::acceptConnection(int socket) {
-  INFO("New connection");
-
   sockaddr_in client_addr;
   int addr_len = sizeof(client_addr);
   int connection_socket = accept(socket, (sockaddr*)&client_addr, (socklen_t*)&addr_len);
@@ -462,14 +443,12 @@ void Server::removeClient(Client* client) {
   clients_.erase(socket);
 }
 
-void Server::updateEvents(int ident, short filter, u_short flags) {  // NOLINT
+void Server::updateEvents(int ident, short filter, u_short flags) {
   timespec timeout = {1, 0};
   struct kevent kev;
   EV_SET(&kev, ident, filter, flags, 0, 0, &timeout);
   int n = kevent(kq_, &kev, 1, NULL, 0, 0);
-  if (n == 0) {
-    INFO("Kevent timeout");
-  } else if (n < 0) {
-    ERROR(std::strerror(errno));
+  if (n <= 0) {
+    throw std::exception();
   }
 }

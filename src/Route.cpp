@@ -1,16 +1,5 @@
 #include "Route.h"
 
-#include <__config>
-#include <__nullptr>
-#include <cctype>
-#include <cstddef>
-#include <exception>
-#include <new>
-#include <string>
-
-#include "Http.h"
-#include "HttpResponseStatus.h"
-
 Route::Route(std::string const& location)
     : location_(location), root_(NULL), directory_listing_(false), directory_page_(NULL), upload_store_(NULL) {
   redirection_.second = NULL;
@@ -38,7 +27,7 @@ Route::ParsingException::ParsingException(std::string const& msg) throw() : msg_
 Route::ParsingException::~ParsingException() throw() {}
 char const* Route::ParsingException::what() const throw() { return msg_.c_str(); }
 
-void Route::parse(std::string const& line) {  // NOLINT
+void Route::parse(std::string const& line) {
   std::string::size_type sep = line.find('=');
   if (sep != std::string::npos) {
     std::string key = line.substr(0, sep);
@@ -104,8 +93,8 @@ void Route::parse(std::string const& line) {  // NOLINT
         std::string path = value.substr(sep + 1);
 
         int code_i = std::atoi(code.c_str());
-        if ((code_i - 300) >= 0 && (code_i - 300) < (307 - 301) && code_i != 300 && code_i != 306) {  // NOLINT
-          redirection_.first = static_cast<HttpResponseRedir::code>(code_i - 300);                    // NOLINT
+        if ((code_i - 300) >= 0 && (code_i - 300) < (307 - 301) && code_i != 300 && code_i != 306) {
+          redirection_.first = static_cast<HttpResponseRedir::code>(code_i - 300);
         } else {
           throw ParsingException("Config file error at line: " + line);
         }

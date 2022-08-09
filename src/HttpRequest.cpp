@@ -1,22 +1,5 @@
 #include "HttpRequest.h"
 
-#include <_types/_uint8_t.h>
-
-#include <__nullptr>
-#include <algorithm>
-#include <cctype>
-#include <cstddef>
-#include <exception>
-#include <iterator>
-#include <string>
-#include <utility>
-#include <vector>
-
-#include "Config.h"
-#include "Http.h"
-#include "ServerConfig.h"
-#include "Uri.h"
-
 HttpRequest::MethodMap initMethodMap() {
   HttpRequest::MethodMap map;
   map.insert(std::pair<std::string, enum Http::method>("GET", Http::GET));
@@ -26,7 +9,6 @@ HttpRequest::MethodMap initMethodMap() {
 }
 const HttpRequest::MethodMap HttpRequest::method_map = initMethodMap();
 
-// NOLINTNEXTLINE
 HttpRequest::HttpRequest(std::vector<uint8_t> const& data, Config const& config)
     : status_(S_NONE),
       time_(std::time(nullptr)),
@@ -47,7 +29,7 @@ HttpRequest::HttpRequest(std::vector<uint8_t> const& data, Config const& config)
           std::map<std::string, enum Http::method>::const_iterator m_it = method_map.find(method);
           if (m_it != method_map.end()) {
             method_ = m_it->second;
-            it += method.length();  // NOLINT
+            it += method.length();
             if (*it == SP) {
               ++it;
               last_token = it;

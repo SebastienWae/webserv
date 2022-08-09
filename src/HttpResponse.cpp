@@ -1,22 +1,7 @@
 #include "HttpResponse.h"
 
-#include <_types/_uint8_t.h>
-
-#include <__nullptr>
-#include <cstddef>
-#include <cstdlib>
-#include <cstring>
-#include <ios>
-#include <limits>
-#include <map>
-#include <string>
-#include <utility>
-#include <vector>
-
-#include "File.h"
-#include "Http.h"
-#include "HttpResponseStatus.h"
-#include "ServerConfig.h"
+#include <fstream>
+#include <sstream>
 
 HttpResponse::HttpResponse(HttpResponseInfo::code status_code, ServerConfig const* server_config)
     : server_config_(server_config),
@@ -151,7 +136,7 @@ std::vector<uint8_t> HttpResponse::getContent(std::size_t len) {
   if (file_ != nullptr) {
     len = len == 0 ? 1 : len;
     if (file_->getIStream()->good() || !file_->getIStream()->eof()) {
-      file_->getIStream()->read(reinterpret_cast<char*>(&response[0]), len);  // NOLINT
+      file_->getIStream()->read(reinterpret_cast<char*>(&response[0]), len);
     } else {
       throw EndOfResponseException();
     }
@@ -163,7 +148,7 @@ std::vector<uint8_t> HttpResponse::getContent(std::size_t len) {
       response.insert(response.begin(), body_.begin(), body_.end());
       body_.erase();
     } else {
-      response.insert(response.begin(), body_.begin(), body_.begin() + len);  // NOLINT
+      response.insert(response.begin(), body_.begin(), body_.begin() + len);
       body_ = body_.substr(len + 1);
     }
   }

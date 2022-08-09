@@ -1,7 +1,5 @@
 #include "HttpResponseStatus.h"
 
-#include <vector>
-
 std::vector<std::pair<std::string const, std::string const> > initResponseInfo() {
   std::vector<std::pair<std::string const, std::string const> > v;
   v.push_back(std::pair<std::string const, std::string>("100", "Continue"));

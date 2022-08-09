@@ -1,16 +1,6 @@
 #ifndef HTTPREQUEST_H
 #define HTTPREQUEST_H
 
-#include <_types/_uint8_t.h>
-
-#include <cstddef>
-#include <ctime>
-#include <exception>
-#include <map>
-#include <stdexcept>
-#include <string>
-#include <vector>
-
 #include "Config.h"
 #include "Http.h"
 #include "Uri.h"

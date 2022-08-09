@@ -1,14 +1,10 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
-#include <arpa/inet.h>
-#include <netinet/in.h>
 #include <netinet/ip.h>
 #include <signal.h>
-#include <sys/socket.h>
 
 #include <ctime>
-#include <exception>
 
 #include "Config.h"
 #include "HttpRequest.h"

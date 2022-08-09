@@ -1,6 +1,3 @@
-#include <signal.h>
-#include <sys/signal.h>
-
 #include <exception>
 #include <iostream>
 

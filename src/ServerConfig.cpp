@@ -1,13 +1,5 @@
 #include "ServerConfig.h"
 
-#include <cstddef>
-#include <exception>
-#include <iostream>
-#include <limits>
-#include <vector>
-
-#include "HttpResponseStatus.h"
-
 ServerConfig::ServerConfig(std::string const& hostname, std::string const& port)
     : hostname_(hostname.empty() ? "localhost" : hostname),
       port_(port.empty() ? "80" : port),
@@ -31,7 +23,7 @@ ServerConfig::ParsingException::ParsingException(std::string const& msg) throw()
 ServerConfig::ParsingException::~ParsingException() throw() {}
 char const* ServerConfig::ParsingException::what() const throw() { return msg_.c_str(); }
 
-Route* ServerConfig::parse(std::string const& line) {  // NOLINT
+Route* ServerConfig::parse(std::string const& line) {
   std::string::size_type sep = line.find('=');
   if (sep != std::string::npos) {
     std::string key = line.substr(0, sep);
@@ -52,7 +44,7 @@ Route* ServerConfig::parse(std::string const& line) {  // NOLINT
       File* file = new File(path);
       if (file->getType() == File::REG && file->isReadable() && file->getIStream() != NULL) {
         int code_i = std::atoi(code.c_str());
-        if ((code_i - 400) >= 0 && (code_i - 400) < (418 - 400)) {  // NOLINT
+        if ((code_i - 400) >= 0 && (code_i - 400) < (418 - 400)) {
           HttpResponseClientError::code code = static_cast<HttpResponseClientError::code>(code_i - 400);
           std::pair<HttpResponseClientError::code, File*> page(code, file);
           std::map<HttpResponseClientError::code, File*>::iterator dup = client_errors_pages_.find(code);
@@ -63,7 +55,7 @@ Route* ServerConfig::parse(std::string const& line) {  // NOLINT
             client_errors_pages_.insert(page);
           }
           return NULL;
-        } else if ((code_i - 500) >= 0 && (code_i - 500) < (506 - 500)) {  // NOLINT
+        } else if ((code_i - 500) >= 0 && (code_i - 500) < (506 - 500)) {
           HttpResponseServerError::code code = static_cast<HttpResponseServerError::code>(code_i - 500);
           std::pair<HttpResponseServerError::code, File*> page(code, file);
           std::map<HttpResponseServerError::code, File*>::iterator dup = server_errors_pages_.find(code);
@@ -121,7 +113,7 @@ void ServerConfig::verify() const throw(ParsingException) {
   }
 }
 
-Route* ServerConfig::matchRoute(Uri const* uri) const {  // NOLINT
+Route* ServerConfig::matchRoute(Uri const* uri) const {
   int max = 0;
   Route* match = NULL;
   Route* defaut_match = NULL;

@@ -1,13 +1,7 @@
 #include "Uri.h"
 
-#include <algorithm>
-#include <cctype>
-#include <exception>
-#include <iterator>
-#include <stdexcept>
-#include <string>
+#include <vector>
 
-// NOLINTNEXTLINE
 Uri::Uri(std::string const& uri) throw(UriParsingException) : type_(Uri::TYPE_NONE), raw_(uri) {
   if (uri.empty()) {
     throw UriParsingException();
@@ -301,7 +295,7 @@ std::string Uri::getDecodedPath() const {
       case '%':
         if (it + 1 != path_.end() && it + 2 != path_.end()) {
           char hs[3] = {it[1], it[2], 0};
-          decoded += static_cast<char>(strtol(hs, nullptr, 16));  // NOLINT
+          decoded += static_cast<char>(strtol(hs, nullptr, 16));
           it += 2;
         }
         break;

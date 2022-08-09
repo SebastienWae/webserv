@@ -1,13 +1,8 @@
 #include "File.h"
 
 #include <dirent.h>
-#include <sys/_types/_timespec.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
-#include <cstddef>
 #include <fstream>
-#include <iomanip>
 #include <sstream>
 
 std::vector<std::pair<std::string const, std::string const> > initMimeFileType() {

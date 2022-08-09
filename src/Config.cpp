@@ -1,14 +1,8 @@
 #include "Config.h"
 
-#include <__config>
-#include <cstddef>
 #include <fstream>
-#include <string>
-#include <vector>
 
-#include "File.h"
 #include "Log.h"
-#include "ServerConfig.h"
 
 Config::Config(std::string const& config_path) : file_(File(config_path)) {
   INFO("Opening config file: " + config_path)
@@ -29,12 +23,12 @@ Config::ParsingException::ParsingException(std::string const& msg) throw() : msg
 Config::ParsingException::~ParsingException() throw() {}
 char const* Config::ParsingException::what() const throw() { return msg_.c_str(); }
 
-void Config::parse() {  // NOLINT
+void Config::parse() {
   std::ifstream* file = file_.getIStream();
   enum parse_state state = S_NONE;
   ServerConfig* current_server_config = NULL;
   Route* current_route = NULL;
-  for (std::string line; std::getline(*file, line);) {  // NOLINT
+  for (std::string line; std::getline(*file, line);) {
     switch (state) {
       case S_NONE: {
         if (line.empty()) {

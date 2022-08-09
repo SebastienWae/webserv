@@ -1,11 +1,8 @@
 #ifndef FILE_H
 #define FILE_H
 
-#include <sys/_types/_timespec.h>
 #include <sys/stat.h>
 
-#include <cstddef>
-#include <fstream>
 #include <string>
 #include <vector>
 

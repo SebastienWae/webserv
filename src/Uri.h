@@ -1,13 +1,11 @@
 #ifndef URI_H
 #define URI_H
 
-#include <iterator>
-#include <map>
 #include <string>
-#include <vector>
 
 #define LENGTHDNS 255
 #define LENGTHPARTDOTS 63
+
 class Uri {
 public:
   enum type { TYPE_NONE, TYPE_ABSOLUTE, TYPE_RELATIVE };

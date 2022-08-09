@@ -1,17 +1,7 @@
 #include "CGI.h"
 
-#include <_ctype.h>
-#include <_types/_uint8_t.h>
-#include <sys/errno.h>
+#include <arpa/inet.h>
 #include <unistd.h>
-
-#include <algorithm>
-#include <cstdlib>
-#include <cstring>
-#include <string>
-#include <vector>
-
-#include "File.h"
 
 CGI::CGI(Client* client, ServerConfig const* server_config, std::pair<std::string, File*> const& cgi_pair,
          std::string const& method)

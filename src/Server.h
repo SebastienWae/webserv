@@ -1,17 +1,7 @@
 #ifndef SERVER_H
 #define SERVER_H
 
-#include <netdb.h>
 #include <sys/event.h>
-#include <sys/fcntl.h>
-#include <sys/socket.h>
-#include <unistd.h>
-
-#include <algorithm>
-#include <exception>
-#include <iterator>
-#include <set>
-#include <vector>
 
 #include "Client.h"
 #include "Config.h"

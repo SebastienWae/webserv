@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "Client.h"
+#include "File.h"
 #include "ServerConfig.h"
 
 #define ENVLENGTH 16

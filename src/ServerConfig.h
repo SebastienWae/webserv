@@ -1,11 +1,7 @@
 #ifndef SERVERCONFIG_H
 #define SERVERCONFIG_H
 
-#include <fstream>
 #include <map>
-#include <sstream>
-#include <string>
-#include <vector>
 
 #include "File.h"
 #include "Route.h"
