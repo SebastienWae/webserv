@@ -53,16 +53,26 @@ Route* ServerConfig::parse(std::string const& line) {  // NOLINT
       if (file->getType() == File::REG && file->isReadable() && file->getIStream() != NULL) {
         int code_i = std::atoi(code.c_str());
         if ((code_i - 400) >= 0 && (code_i - 400) < (418 - 400)) {  // NOLINT
-          std::pair<HttpResponseClientError::code, File*> page(
-              static_cast<HttpResponseClientError::code>(code_i - 400),  // NOLINT
-              file);
-          client_errors_pages_.insert(page);
+          HttpResponseClientError::code code = static_cast<HttpResponseClientError::code>(code_i - 400);
+          std::pair<HttpResponseClientError::code, File*> page(code, file);
+          std::map<HttpResponseClientError::code, File*>::iterator dup = client_errors_pages_.find(code);
+          if (dup != client_errors_pages_.end()) {
+            delete dup->second;
+            dup->second = file;
+          } else {
+            client_errors_pages_.insert(page);
+          }
           return NULL;
         } else if ((code_i - 500) >= 0 && (code_i - 500) < (506 - 500)) {  // NOLINT
-          std::pair<HttpResponseServerError::code, File*> page(
-              static_cast<HttpResponseServerError::code>(code_i - 500),  // NOLINT
-              file);
-          server_errors_pages_.insert(page);
+          HttpResponseServerError::code code = static_cast<HttpResponseServerError::code>(code_i - 500);
+          std::pair<HttpResponseServerError::code, File*> page(code, file);
+          std::map<HttpResponseServerError::code, File*>::iterator dup = server_errors_pages_.find(code);
+          if (dup != server_errors_pages_.end()) {
+            delete dup->second;
+            dup->second = file;
+          } else {
+            server_errors_pages_.insert(page);
+          }
           return NULL;
         } else {
           delete file;

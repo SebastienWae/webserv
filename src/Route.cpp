@@ -1,5 +1,6 @@
 #include "Route.h"
 
+#include <__config>
 #include <__nullptr>
 #include <cctype>
 #include <cstddef>
@@ -43,7 +44,7 @@ void Route::parse(std::string const& line) {  // NOLINT
     std::string key = line.substr(0, sep);
     std::string value = line.substr(sep + 1);
 
-    if (key == "root") {
+    if (key == "root" && root_ == nullptr) {
       File* root_dir = new File(value);
       if (root_dir->getType() == File::DI && root_dir->isReadable()) {
         root_ = root_dir;
@@ -51,7 +52,7 @@ void Route::parse(std::string const& line) {  // NOLINT
         delete root_dir;
         throw ParsingException("Config file error at line: " + line);
       }
-    } else if (key == "directory_page") {
+    } else if (key == "directory_page" && directory_page_ == nullptr) {
       File* page = new File(value);
       if (page->getType() == File::REG && page->isReadable() && page->getIStream() != NULL) {
         directory_page_ = page;
@@ -65,7 +66,7 @@ void Route::parse(std::string const& line) {  // NOLINT
       } else if (value != "off") {
         throw ParsingException("Config file error at line: " + line);
       }
-    } else if (key == "upload_store") {
+    } else if (key == "upload_store" && upload_store_ == nullptr) {
       File* store = new File(value);
       if (store->getType() == File::DI && store->isReadable() && store->isWritable()) {
         upload_store_ = store;
@@ -93,7 +94,7 @@ void Route::parse(std::string const& line) {  // NOLINT
         }
         value = value.substr(pos + 1);
       }
-    } else if (key == "redirection") {
+    } else if (key == "redirection" && redirection_.second == nullptr) {
       if (redirection_.second == NULL) {
         sep = value.find(' ');
         if (sep == std::string::npos) {
